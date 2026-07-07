@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <title>净契｜合同脱敏台</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="净契首页">
+        <span class="brand-mark" aria-hidden="true">净</span>
+        <span>
+          <strong>净契</strong>
+          <small>合同脱敏台</small>
+        </span>
+      </a>
+      <div class="local-status" role="status">
+        <span class="status-pulse" aria-hidden="true"></span>
+        <span><strong>本地处理</strong> · 文件不会上传</span>
+      </div>
+      <button id="clearButton" class="quiet-button" type="button">清除本次内容</button>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">给 AI 之前，先把合同留在你手里</p>
+          <h1 id="pageTitle">识别敏感信息，<br />留下可判断的条款。</h1>
+        </div>
+        <p class="intro-copy">
+          导入技术合作或采购合同，在本机完成识别与替换。你确认之后，才会生成可提交给大模型的 Markdown。
+        </p>
+      </section>
+
+      <nav class="steps" aria-label="处理步骤">
+        <span class="step is-active" data-step="1"><b>01</b> 导入合同</span>
+        <span class="step" data-step="2"><b>02</b> 复核替换</span>
+        <span class="step" data-step="3"><b>03</b> 安全导出</span>
+      </nav>
+
+      <section id="importPanel" class="panel import-layout">
+        <div>
+          <div id="dropZone" class="drop-zone" role="group" aria-label="拖拽添加合同附件，或点击选择附件">
+            <input id="fileInput" type="file" accept=".md,.markdown,.docx" hidden />
+            <div class="file-glyph" aria-hidden="true"><span>条款</span></div>
+            <p class="drop-title">拖拽添加合同附件</p>
+            <p class="drop-help">将文件拖到此处，或点击下方按钮 · 支持 Markdown、DOCX</p>
+            <div class="drop-actions">
+              <button id="chooseFileButton" class="primary-button" type="button">选择合同附件</button>
+              <button id="demoButton" class="secondary-button" type="button">试用虚构样例</button>
+            </div>
+            <p class="drop-privacy">单份附件 · 全程本地 · 原文件不会被修改</p>
+          </div>
+          <div id="fileNotice" class="notice" hidden></div>
+        </div>
+
+        <aside class="settings-card" aria-labelledby="settingsTitle">
+          <div class="section-heading">
+            <span>识别设置</span>
+            <h2 id="settingsTitle">先定好处理边界</h2>
+          </div>
+
+          <label class="field">
+            <span>合同类型 <small>可选</small></span>
+            <select id="contractType">
+              <option value="auto" selected>自动识别（推荐）</option>
+              <option value="manual">手动输入</option>
+            </select>
+          </label>
+
+          <label id="manualContractTypeField" class="field" hidden>
+            <span>输入合同类型</span>
+            <input id="manualContractType" type="text" maxlength="40" placeholder="例如：房屋租赁合同" />
+          </label>
+
+          <fieldset class="choice-group">
+            <legend>精确金额</legend>
+            <label><input type="radio" name="amountMode" value="replace" checked /> 替换为占位符</label>
+            <label><input type="radio" name="amountMode" value="keep" /> 保留原金额</label>
+          </fieldset>
+
+          <label class="field">
+            <span>补充敏感词 <small>每行一个</small></span>
+            <textarea id="customTerms" rows="5" placeholder="例如：&#10;星河计划&#10;X-17 型号"></textarea>
+          </label>
+
+          <div class="privacy-note">
+            <span aria-hidden="true">⌁</span>
+            <p><strong>没有上传按钮。</strong>网页不加载统计脚本，也不会把合同内容发送到网络。</p>
+          </div>
+        </aside>
+      </section>
+
+      <section id="reviewPanel" class="panel" hidden>
+        <div class="review-toolbar">
+          <div>
+            <p class="eyebrow">复核建议</p>
+            <h2><span id="matchCount">0</span> 处候选信息</h2>
+          </div>
+          <div class="toolbar-actions">
+            <button id="backButton" class="quiet-button" type="button">更换附件</button>
+            <button id="exportStepButton" class="primary-button" type="button">完成复核</button>
+          </div>
+        </div>
+
+        <div id="warningStrip" class="warning-strip" hidden></div>
+
+        <div class="review-grid">
+          <section class="document-pane" aria-labelledby="sourceTitle">
+            <header>
+              <span>原合同</span>
+              <small id="sourceFileName"></small>
+            </header>
+            <div id="sourceDocument" class="document-surface" tabindex="0"></div>
+          </section>
+
+          <aside class="findings-pane" aria-labelledby="findingsTitle">
+            <header>
+              <span id="findingsTitle">替换清单</span>
+              <button id="selectAllButton" class="text-button" type="button">全部选择</button>
+            </header>
+            <div id="findingsList" class="findings-list"></div>
+            <div class="add-term-row">
+              <input id="quickTerm" type="text" placeholder="补充一个遗漏词" />
+              <button id="addTermButton" class="secondary-button" type="button">加入</button>
+            </div>
+          </aside>
+
+          <section class="document-pane preview-pane" aria-labelledby="previewTitle">
+            <header>
+              <span id="previewTitle">脱敏预览</span>
+              <small>随选择实时更新</small>
+            </header>
+            <div id="previewDocument" class="document-surface" tabindex="0"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="exportPanel" class="panel export-panel" hidden>
+        <div class="export-summary">
+          <p class="eyebrow">可以导出</p>
+          <h2>脱敏稿已经准备好。</h2>
+          <p id="exportSummaryText"></p>
+          <div id="riskCallout" class="risk-callout" hidden></div>
+
+          <div class="export-actions">
+            <a id="downloadMdButton" class="primary-button" href="#" download>下载脱敏 Markdown</a>
+            <a id="downloadReportButton" class="secondary-button" href="#" download>下载脱敏报告</a>
+            <a id="openMdButton" class="secondary-button" href="#" target="_blank" rel="noopener">打开 Markdown</a>
+            <button id="copyMdButton" class="secondary-button" type="button">复制 Markdown</button>
+            <button id="returnReviewButton" class="quiet-button" type="button">返回复核</button>
+          </div>
+        </div>
+
+        <aside class="prompt-card">
+          <div class="section-heading">
+            <span>下一步</span>
+            <h2>合同审查提示词</h2>
+          </div>
+          <textarea id="reviewPrompt" rows="13" readonly></textarea>
+          <button id="copyPromptButton" class="secondary-button full-width" type="button">复制提示词</button>
+          <p>AI 分析仅供参考，不能替代律师或企业法务的专业判断。</p>
+        </aside>
+      </section>
+    </main>
+
+    <footer>
+      <span>净契 MVP · 浏览器本地处理</span>
+      <span>请在导出前完成人工复核</span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>
