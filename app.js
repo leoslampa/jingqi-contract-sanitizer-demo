@@ -72,6 +72,12 @@ const categoryConfig = {
   custom: { label: "自定义敏感词", placeholder: "【敏感信息】", risk: "medium" },
 };
 
+const batchGroups = {
+  amount: { label: "金额", categories: new Set(["amount"]) },
+  spec: { label: "数量与参数", categories: new Set(["numericSpec", "percentage", "ratio", "installment"]) },
+  time: { label: "日期与期限", categories: new Set(["date", "duration"]) },
+};
+
 const specUnitPattern = "(?:min|ms|GU|μm|um|nm|mm|cm|km|m²|㎡|kg|mg|g|ml|mL|L|kW|W|V|A|MPa|kPa|Pa|℃|°C|°|H|h|m|s|d|y|轮|件|级|次|套|个|台|组|批|年|个月|月|周|天|日|小时|分钟|秒|毫秒)";
 const chineseNumberPattern = "[零〇一二两三四五六七八九十百千万亿两壹贰叁肆伍陆柒捌玖拾佰仟萬億]+";
 
@@ -571,6 +577,7 @@ function renderReview() {
   els.sourceDocument.innerHTML = highlightText(state.sourceText, state.matches, false);
   renderFindings();
   renderPreview();
+  updateBatchControls();
 }
 
 function highlightText(text, matches, preview) {
@@ -605,7 +612,9 @@ function renderFindings() {
     checkbox.checked = match.selected;
     checkbox.addEventListener("change", () => {
       match.selected = checkbox.checked;
+      els.sourceDocument.innerHTML = highlightText(state.sourceText, state.matches, false);
       renderPreview();
+      updateBatchControls();
     });
 
     const body = document.createElement("div");
@@ -629,6 +638,39 @@ function renderFindings() {
     row.append(checkbox, body);
     els.findingsList.appendChild(row);
   });
+}
+
+function batchMatches(groupKey) {
+  const group = batchGroups[groupKey];
+  return group ? state.matches.filter((match) => group.categories.has(match.category)) : [];
+}
+
+function updateBatchControls() {
+  document.querySelectorAll("[data-batch-group]").forEach((button) => {
+    const groupKey = button.dataset.batchGroup;
+    const group = batchGroups[groupKey];
+    const matches = batchMatches(groupKey);
+    const keptCount = matches.filter((match) => !match.selected).length;
+    const allKept = matches.length > 0 && keptCount === matches.length;
+    const label = button.querySelector("[data-batch-label]");
+    const count = button.querySelector("[data-batch-count]");
+
+    button.disabled = matches.length === 0;
+    button.classList.toggle("is-kept", allKept);
+    button.setAttribute("aria-pressed", String(allKept));
+    button.setAttribute("aria-label", allKept ? `${group.label}已保留，点击恢复脱敏` : `保留全部${group.label}`);
+    label.textContent = allKept ? `${group.label}已保留` : `保留${group.label}`;
+    count.textContent = keptCount && !allKept ? `${keptCount}/${matches.length} 已保留` : `${matches.length} 项`;
+    button.title = allKept ? `点击后重新脱敏全部${group.label}` : `点击后保留全部${group.label}原文`;
+  });
+}
+
+function toggleBatchGroup(groupKey) {
+  const matches = batchMatches(groupKey);
+  if (!matches.length) return;
+  const shouldRestoreMasking = matches.every((match) => !match.selected);
+  matches.forEach((match) => { match.selected = shouldRestoreMasking; });
+  renderReview();
 }
 
 function renderPreview() {
@@ -918,6 +960,9 @@ $("exportStepButton").addEventListener("click", prepareExport);
 $("addTermButton").addEventListener("click", addQuickTerm);
 els.quickTerm.addEventListener("keydown", (event) => { if (event.key === "Enter") addQuickTerm(); });
 $("selectAllButton").addEventListener("click", () => { state.matches.forEach((item) => { item.selected = true; }); renderReview(); });
+document.querySelectorAll("[data-batch-group]").forEach((button) => {
+  button.addEventListener("click", () => toggleBatchGroup(button.dataset.batchGroup));
+});
 els.copyMdButton.addEventListener("click", async () => {
   try {
     await copyText(state.outputText);

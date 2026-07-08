@@ -119,8 +119,28 @@
           <aside class="findings-pane" aria-labelledby="findingsTitle">
             <header>
               <span id="findingsTitle">替换清单</span>
-              <button id="selectAllButton" class="text-button" type="button">全部选择</button>
+              <button id="selectAllButton" class="text-button" type="button">全部脱敏</button>
             </header>
+            <div class="batch-controls" aria-labelledby="batchControlsTitle">
+              <div class="batch-controls-copy">
+                <strong id="batchControlsTitle">按类别保留原文</strong>
+                <small>默认全部脱敏，点击后保留该类信息</small>
+              </div>
+              <div class="batch-actions">
+                <button class="batch-action" type="button" data-batch-group="amount" aria-pressed="false">
+                  <span data-batch-label>保留金额</span>
+                  <small data-batch-count>0 项</small>
+                </button>
+                <button class="batch-action" type="button" data-batch-group="spec" aria-pressed="false">
+                  <span data-batch-label>保留数量与参数</span>
+                  <small data-batch-count>0 项</small>
+                </button>
+                <button class="batch-action" type="button" data-batch-group="time" aria-pressed="false">
+                  <span data-batch-label>保留日期与期限</span>
+                  <small data-batch-count>0 项</small>
+                </button>
+              </div>
+            </div>
             <div id="findingsList" class="findings-list"></div>
             <div class="add-term-row">
               <input id="quickTerm" type="text" placeholder="补充一个遗漏词" />
