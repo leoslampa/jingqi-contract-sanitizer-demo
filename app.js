@@ -10,7 +10,9 @@ const state = {
   contractTypeMode: "auto",
   outputText: "",
   downloadUrls: [],
+  sourceFormat: "",
 };
+let importGeneration = 0;
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -52,6 +54,7 @@ const categoryConfig = {
   entityH: { label: "主体H", placeholder: "【主体H】", risk: "high" },
   entityI: { label: "主体I", placeholder: "【主体I】", risk: "high" },
   entityJ: { label: "主体J", placeholder: "【主体J】", risk: "high" },
+  entityOther: { label: "相关主体", placeholder: "【相关主体】", risk: "high" },
   person: { label: "人员姓名", placeholder: "【联系人】", risk: "high" },
   address: { label: "地址", placeholder: "【地址】", risk: "high" },
   project: { label: "项目或采购标的", placeholder: "【项目A】", risk: "medium" },
@@ -78,31 +81,42 @@ const batchGroups = {
   time: { label: "日期与期限", categories: new Set(["date", "duration"]) },
 };
 
-const specUnitPattern = "(?:min|ms|GU|μm|um|nm|mm|cm|km|m²|㎡|kg|mg|g|ml|mL|L|kW|W|V|A|MPa|kPa|Pa|℃|°C|°|H|h|m|s|d|y|轮|件|级|次|套|个|台|组|批|年|个月|月|周|天|日|小时|分钟|秒|毫秒)";
+const specUnitPattern = "(?:min|ms|GU|μm|um|nm|mm|cm|km|m²|㎡|平方米|平方|平米|米|kg|mg|g|ml|mL|L|kW|W|V|A|MPa|kPa|Pa|℃|°C|°|H|h|m|s|d|y|户|名|轮|件|级|次|套|个|台|组|批|栋|层|楼|号楼|年|个月|月|周|天|日|小时|分钟|秒|毫秒)";
 const chineseNumberPattern = "[零〇一二两三四五六七八九十百千万亿两壹贰叁肆伍陆柒捌玖拾佰仟萬億]+";
+const companySuffixPattern = "(?:公司|集团|中心|企业|事务所|研究院|研究所|委员会|银行|学校|大学|学院|医院|协会|基金会|机关|单位)";
+const companyNameSource = String.raw`[\u4e00-\u9fa5A-Za-z0-9（）()·&＆.\-—_、 \t　\r\n]{2,90}${companySuffixPattern}`;
+const partyLabelSource = "甲方|乙方|丙方|丁方|戊方|己方|庚方|辛方|壬方|癸方";
+const currencyNamePattern = "(?:人民币|港币|港元|美元|美金|欧元|英镑|日元|日币|澳元|加元|新加坡元|新币|CNY|RMB|HKD|USD|EUR|GBP|JPY|AUD|CAD|SGD)";
+const currencySymbolPattern = "(?:HK\\$|US\\$|CNY|RMB|USD|EUR|GBP|JPY|HKD|¥|￥|\\$|€|£)";
+const chineseUpperMoneyPattern = "[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]{1,50}";
+const chineseUpperMoneyUnitPattern = `(?:(?:元|圆|万元|萬元|亿元|億元)(?:${currencyNamePattern})?|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)`;
 
 const patterns = [
   { category: "email", regex: /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi },
   { category: "idCard", regex: /(?<![0-9A-Z])\d{17}[0-9Xx](?![0-9A-Z])/g },
   { category: "creditCode", regex: /(?<![0-9A-Z])[0-9A-HJ-NPQRTUWXY]{18}(?![0-9A-Z])/g },
   { category: "phone", regex: /(?<!\d)(?:\+?86[-\s]?)?1[3-9]\d{9}(?!\d)|(?<!\d)(?:0\d{2,3}[-\s]?)?\d{7,8}(?!\d)/g },
+  { category: "phone", regex: /(?<!\d)(?:[（(]\s*0\d{2,3}\s*[）)]|0\d{2,3})[\s　-]*\d{3,4}[\s　-]*\d{4}(?!\d)(?:\s*[（(]\s*(?:总机|转\s*\d+)\s*[）)])?/g },
   { category: "bankAccount", regex: /(?<!\d)(?:\d[ -]?){16,24}(?!\d)/g },
   { category: "date", regex: /[【\[]\s*(?:20\d{2}|19\d{2})\s*[】\]]\s*年\s*[【\[]\s*(?:0?[1-9]|1[0-2])\s*[】\]]\s*月(?:\s*[【\[]\s*(?:0?[1-9]|[12]\d|3[01])\s*[】\]]\s*日)?/g, placeholder: (match) => match[0].includes("日") ? "20XX年XX月XX日" : "20XX年XX月" },
-  { category: "amount", regex: /(?:人民币\s*)?(?:¥|￥)?\s*\d{1,3}(?:[,，]\d{3})+(?:\.\d{1,2})?\s*[（(]\s*(?:大写\s*[：:]?\s*)?[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]+(?:元|圆|万元|萬元|亿元|億元)[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\s*[）)]/g, placeholder: "【合同金额】" },
-  { category: "amount", regex: /(?:人民币\s*)?(?:¥|￥)?\s*(?:\d{1,3}(?:[,，]\d{3})+|\d+)(?:\.\d{1,2})?\s*(?:亿元|万元|万|元)(?:\s*[（(]\s*(?:大写\s*[：:]?\s*)?[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]+(?:元|圆|万元|萬元|亿元|億元)?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\s*[）)])?/g, placeholder: (match) => {
+  { category: "amount", regex: new RegExp(`${currencyNamePattern}\\s*(?:金额|价款|费用)?大写\\s*[：:]\\s*[【\\[（(]?\\s*${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【合同金额】" },
+  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?(?:¥|￥|\\$|€|£)?\\s*\\d{1,3}(?:[,，]\\d{3})+(?:\\.\\d{1,2})?\\s*[（(]\\s*(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[）)]`, "gi"), placeholder: "【合同金额】" },
+  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?(?:¥|￥|\\$|€|£)?\\s*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?\\s*(?:亿元|万元|万(?!\\s*(?:平方米|平方|平米|㎡|m²))|元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)(?:\\s*[（(]\\s*(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[）)])?`, "gi"), placeholder: (match) => {
     const context = match.input.slice(Math.max(0, match.index - 16), match.index);
     if (/(?:合同总额|合同总金额|合同金额|费用总额)\s*(?:为|是|：|:)?\s*$/.test(context)) return "【合同金额】";
-    return `X${(match[0].match(/(?:亿元|万元|万|元)(?=\s*(?:[（(]|$))/) || ["元"])[0]}`;
+    if (new RegExp(`${currencyNamePattern}|${currencySymbolPattern}`, "i").test(match[0])) return "【合同金额】";
+    return `X${(match[0].match(/(?:亿元|万元|万|元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)(?=\s*(?:[（(]|$))/) || ["元"])[0]}`;
   } },
-  { category: "amount", regex: /(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)\s*\d+(?:\.\d+)?\s*(?:亿元|万元|万|元)/g, placeholder: (match) => `${(match[0].match(/^(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)/) || [""])[0]}X${(match[0].match(/(?:亿元|万元|万|元)$/) || ["元"])[0]}` },
-  { category: "amount", regex: /(?:HK\$|US\$|CNY|RMB|USD|¥|￥|\$|€|£)\s*[【\[（(]?\s*(?:\d{1,3}(?:[,，]\d{3})+|\d+)(?:\.\d{1,2})?\s*[】\]\）)]?\s*(?:元|万元|亿元|美元|港元|欧元|英镑)?/gi },
+  { category: "amount", regex: /(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)\s*\d+(?:\.\d+)?\s*(?:亿元|万元|万(?!\s*(?:平方米|平方|平米|㎡|m²))|元)/g, placeholder: (match) => `${(match[0].match(/^(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)/) || [""])[0]}X${(match[0].match(/(?:亿元|万元|万|元)$/) || ["元"])[0]}` },
+  { category: "amount", regex: new RegExp(`${currencySymbolPattern}\\s*[【\\[（(]?\\s*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?\\s*[】\\]\\）)]?\\s*(?:元|万元|亿元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)?`, "gi") },
   { category: "amount", regex: /(?:人民币\s*)?[【\[]\s*\d+(?:\.\d{1,2})?\s*(?:万|亿)?\s*[】\]]\s*元/g },
   { category: "amount", regex: /(?:人民币\s*)?[【\[]\s*\d+\.\d{1,2}\s*[】\]]/g },
-  { category: "amount", regex: /(?:人民币\s*)?[【\[]\s*[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]{1,40}(?:元|圆)[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\s*[】\]]/g },
+  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?[【\\[]\\s*${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]]`, "gi") },
+  { category: "amount", regex: new RegExp(`(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【合同金额】" },
   { category: "amount", regex: /(?<!\d)\d+(?:\.\d{1,2})?(?=\s*元\s*\/\s*[^/\s，,；;。]{1,12}\s*\/\s*(?:月|日|年))/g, placeholder: "X" },
   { category: "amount", regex: /(?<!\d)\d+(?:\.\d{1,2})?(?=\s*[】\]\）)]?\s*元(?![\d]))/g, placeholder: "X" },
-  { category: "amount", regex: /(?:人民币\s*)?[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]{1,40}(?:元|圆)[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?/g },
-  { category: "amount", regex: /(?:\d+(?:\.\d{1,2})?)\s*[-—–~至]\s*(?:\d+(?:\.\d{1,2})?)\s*(元|万元|亿元|美元|港元|欧元|英镑)/g, placeholder: (match) => `X-Y${match[1]}` },
+  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?`, "gi") },
+  { category: "amount", regex: /(?:\d+(?:\.\d{1,2})?)\s*[-—–~至]\s*(?:\d+(?:\.\d{1,2})?)\s*(元|万元|亿元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)/g, placeholder: (match) => `X-Y${match[1]}` },
   { category: "percentage", regex: /\d+(?:\.\d+)?\s*[％%]\s*[-—–~至]\s*\d+(?:\.\d+)?\s*[％%]/g, placeholder: "X%-Y%" },
   { category: "percentage", regex: /\d+(?:\.\d+)?\s*[％%]/g, placeholder: "X%" },
   { category: "percentage", regex: /百分之\s*(?:\d+(?:\.\d+)?|[零〇一二两三四五六七八九十百]+)/g, placeholder: "百分之X" },
@@ -118,6 +132,12 @@ const patterns = [
   { category: "numericSpec", regex: /(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)\s*\d+(?:\.\d+)?/g, placeholder: (match) => `${(match[0].match(/^(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)/) || [""])[0]}X` },
   { category: "numericSpec", regex: new RegExp(`(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)\\s*\\d+(?:\\.\\d+)?\\s*${specUnitPattern}`, "gi"), placeholder: (match) => `${(match[0].match(/^(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)/) || [""])[0]}X${(match[0].match(new RegExp(`${specUnitPattern}$`, "i")) || [""])[0]}` },
   { category: "numericSpec", regex: new RegExp(`\\d+(?:\\.\\d+)?\\s*(?:-|—|–|~|到|至|to)\\s*\\d+(?:\\.\\d+)?\\s*${specUnitPattern}`, "gi"), placeholder: (match) => `X-Y${(match[0].match(new RegExp(`${specUnitPattern}$`, "i")) || [""])[0]}` },
+  { category: "numericSpec", regex: new RegExp(`(?:至少|至多|不少于|不低于|不高于|不超过|低于|高于|大于|小于|约|共|全部)?\\s*\\d+(?:\\.\\d+)?\\s*${specUnitPattern}`, "gi"), placeholder: (match) => {
+    const prefix = (match[0].match(/^(?:至少|至多|不少于|不低于|不高于|不超过|低于|高于|大于|小于|约|共|全部)?/) || [""])[0];
+    const unit = (match[0].match(new RegExp(`${specUnitPattern}$`, "i")) || [""])[0];
+    return `${prefix}X${unit}`;
+  } },
+  { category: "numericSpec", regex: /\d+(?:\.\d+)?\s*(?:万|千|百)?\s*(?:平方米|平方|平米|㎡|m²|米)/g, placeholder: (match) => `X${(match[0].match(/(?:万|千|百)?\s*(?:平方米|平方|平米|㎡|m²|米)$/) || [""])[0].replace(/\s+/g, "")}` },
   { category: "numericSpec", regex: new RegExp(`(?<![\\dA-Za-z])\\d+(?:\\.\\d+)?\\s*${specUnitPattern}(?![A-Za-z])`, "gi"), placeholder: (match) => `X${(match[0].match(new RegExp(`${specUnitPattern}$`, "i")) || [""])[0]}` },
   { category: "date", regex: /(?<!\d)(?:20\d{2}|19\d{2})年\s?(?:0?[1-9]|1[0-2])月\s?(?:0?[1-9]|[12]\d|3[01])日(?!\d)/g },
   { category: "date", regex: /(?<!\d)(?:20\d{2}|19\d{2})[.\-/](?:0?[1-9]|1[0-2])[.\-/](?:0?[1-9]|[12]\d|3[01])(?!\d)/g, placeholder: "20XX年XX月XX日" },
@@ -186,7 +206,7 @@ const demoContract = `# 技术合作开发合同
 违约金增加1万元（大写：壹万元），余款≥100万时按0.55×余款计算。
 逾期付款按合同总费用的0.3‰向乙方支付违约金。
 法定代表人或授权代表已获得法定资格；授权代表：项目经理。
-授权代表：；【陈天伟，CLO】；法定代表人（或授权代表）：；【孙哲，法定代表人】。
+授权代表：；【李示例，CLO】；法定代表人（或授权代表）：；【周示例，法定代表人】。
 所有通讯应发往相关接受方的下述地址、电邮地址、传真号码，或书面通知的其他地址、电邮地址。
 合同有效期为【2026】年【5】月【1】日至【2027】年【4】月【30】日。
 1.7 工作日：指合同约定的正常办公日期。
@@ -223,23 +243,37 @@ function showNotice(message, isError = false) {
 
 async function handleFile(file) {
   if (!file) return;
+  const generation = ++importGeneration;
   const extension = file.name.split(".").pop().toLowerCase();
   showNotice("正在本地读取文件……");
-  state.warnings = [];
 
   try {
     let text = "";
+    const warnings = [];
     if (["md", "markdown"].includes(extension)) {
       text = await file.text();
     } else if (extension === "docx") {
       const result = await parseDocx(await file.arrayBuffer());
       text = result.markdown;
-      state.warnings.push(...result.warnings);
+      warnings.push(...result.warnings);
+    } else if (extension === "pdf") {
+      if (file.size > 30 * 1024 * 1024) throw new Error("PDF 实验导入暂限 30 MB，请缩小文件后重试。");
+      const { parsePdf } = await import("./pdf-import.mjs");
+      const result = await parsePdf(await file.arrayBuffer(), (page, total) => {
+        if (generation === importGeneration) showNotice(`正在本地提取 PDF 文字：第 ${page} / ${total} 页……`);
+      });
+      text = result.markdown;
+      warnings.push(...result.warnings);
+    } else if (extension === "doc") {
+      throw new Error("这是旧版 Word（.doc）文件。旧格式存储结构较复杂，当前工具直接读取可能遗漏正文、表格等内容。请用 Word / WPS 打开，选择“另存为 → Word 文档（.docx）”后再导入；仅修改文件后缀无效。");
     } else {
-      throw new Error("当前仅支持 Markdown 和 DOCX 文件。请转换格式后再试。");
+      throw new Error("支持 Markdown、DOCX 和 PDF 文字导入（实验）；旧版 DOC 请先另存为 DOCX。");
     }
 
+    if (generation !== importGeneration) return;
     if (!text.trim()) throw new Error("没有读取到可处理的合同文字。请检查文件内容。");
+    state.warnings = warnings;
+    state.sourceFormat = extension;
     state.fileName = file.name;
     state.sourceText = normalizeText(text);
     state.contractTypeMode = els.contractType.value;
@@ -257,11 +291,14 @@ async function handleFile(file) {
     showNotice("");
     setStep(2);
   } catch (error) {
+    if (generation !== importGeneration) return;
     showNotice(error.message || "文件解析失败，请换一个文件再试。", true);
   }
 }
 
 function loadDemo() {
+  ++importGeneration;
+  state.sourceFormat = "md";
   state.fileName = "虚构技术合作合同.md";
   state.sourceText = demoContract;
   state.contractTypeMode = "auto";
@@ -350,6 +387,14 @@ function buildMatches() {
     }
   });
 
+  extractRelatedEntities(state.sourceText, parties).forEach((entity) => {
+    const regex = flexibleEntityRegex(entity.value);
+    for (const match of state.sourceText.matchAll(regex)) {
+      const expanded = expandSquareWrapper(state.sourceText, match.index, match.index + match[0].length);
+      addCandidate(found, expanded.start, state.sourceText.slice(expanded.start, expanded.end), entity.category, entity.placeholder);
+    }
+  });
+
   extractPartyAliases(state.sourceText, parties).forEach((alias) => {
     const regex = flexibleEntityRegex(alias.value);
     for (const match of state.sourceText.matchAll(regex)) {
@@ -359,6 +404,7 @@ function buildMatches() {
   });
 
   extractLabeledFields(state.sourceText).forEach((field) => addCandidate(found, field.start, field.value, field.category, field.placeholder));
+  extractContextualPersons(state.sourceText).forEach((field) => addCandidate(found, field.start, field.value, field.category, field.placeholder));
 
   const customTerms = els.customTerms.value.split(/\n|、|;/).map((item) => item.trim()).filter(Boolean);
   customTerms.forEach((term, index) => addTermMatches(found, term, `【敏感信息${index + 1}】`));
@@ -379,7 +425,7 @@ function extractParties(text) {
     { stem: "壬", category: "entityI", labels: ["壬方"] },
     { stem: "癸", category: "entityJ", labels: ["癸方"] },
   ];
-  const companySource = String.raw`[^\n|，,；;【\]】（）()]{2,80}(?:公司|集团|中心|企业|事务所|研究院|研究所|委员会|银行|学校|大学|医院|协会|基金会|机关|单位)`;
+  const companySource = companyNameSource;
   const separatorSource = String.raw`(?:[ \t　]*[：:，,.。][ \t　]*(?:(?:\|[ \t　]*)|(?:\n[ \t　]*))?|[ \t]*　+[ \t　]*|[ \t]{2,}|[ \t　]*\|[ \t　]*|[ \t　]*\n[ \t　]*|[ \t　]*(?=[【\[]))`;
   const preamble = contractPreamble(text);
 
@@ -414,12 +460,13 @@ function cleanEntityValue(value) {
   return value
     .replace(/(?:统一社会信用代码|纳税人识别号|地址|电话|联系人|法定代表人).*$/, "")
     .replace(/[（(【\[]\s*(?:以下简称|以下称|后称|简称|略称).*$/, "")
+    .replace(/[ \t　\r\n]+/g, "")
     .replace(/^[ \t　【\[（(：:，,.。]+|[ \t　】\]）)：:，,.。]+$/g, "")
     .trim();
 }
 
 function isLikelyPartyName(value) {
-  return /(?:公司|集团|中心|企业|事务所|研究院|研究所|委员会|政府|银行|学校|大学|医院|协会|基金会|机关|单位)$/.test(value);
+  return new RegExp(`${companySuffixPattern}$`).test(value);
 }
 
 function flexibleEntityRegex(value) {
@@ -427,7 +474,7 @@ function flexibleEntityRegex(value) {
 }
 
 function flexibleEntitySource(value) {
-  return [...value].map((char) => escapeRegex(char)).join("[ \\t　]*");
+  return [...value].map((char) => escapeRegex(char)).join("[\\s　]*");
 }
 
 function extractPartyAliases(text, parties) {
@@ -450,6 +497,22 @@ function extractPartyAliases(text, parties) {
   return aliases.filter((alias, index, list) => list.findIndex((item) => item.value === alias.value && item.category === alias.category) === index);
 }
 
+function extractRelatedEntities(text, parties = []) {
+  const fields = [];
+  const known = new Set(parties.map((party) => party.value));
+  const label = String.raw`(?:公司名称|单位名称|企业名称|主体名称|名\s*称|监理人|设计人|发包人|承包人|代理人|采购人|供应商|服务商|收款方|付款方|第三方|相关方|户\s*名|账户名|收款户名)`;
+  const labelRegex = new RegExp(`${label}[ \\t　]*[：:，,.。;；]?\\s*[【\\[（(]?[ \\t　]*(${companyNameSource})`, "g");
+  const partyRegex = new RegExp(`(?:${partyLabelSource})[ \\t　]*(?:公司)?名称[ \\t　]*[：:，,.。;；]?\\s*[【\\[（(]?[ \\t　]*(${companyNameSource})`, "g");
+  for (const regex of [labelRegex, partyRegex]) {
+    for (const match of text.matchAll(regex)) {
+      const value = cleanEntityValue(match[1]);
+      if (!value || known.has(value) || !isLikelyPartyName(value)) continue;
+      fields.push({ value, category: "entityOther", placeholder: "【相关主体】" });
+    }
+  }
+  return fields.filter((entity, index, list) => list.findIndex((item) => item.value === entity.value) === index);
+}
+
 function expandSquareWrapper(text, start, end) {
   const pairs = { "【": "】", "[": "]" };
   const open = text[start - 1];
@@ -462,17 +525,20 @@ function extractLabeledFields(text) {
   const fields = [];
   const labeledPatterns = [
     { category: "contractNumber", regex: /(?:合同编号|合同号|协议编号|协议号|订单编号|项目编号)[：:，,.。\s　]*([【\[（(]?[A-Za-z0-9\u4e00-\u9fa5._/—–\-]{3,80}[】\]\）)]?)/g, placeholder: "【合同编号】" },
-    { category: "address", regex: /(?:地址(?:、|及)电话)[：:，,.。\s　]*([^\n；;]{4,100})/g, placeholder: "【地址及联系方式】" },
-    { category: "address", regex: /(?:甲方|乙方|丙方|丁方|戊方|己方|庚方|辛方|壬方|癸方)[：:，,.。\s　]*地址[：:，,.。\s　]*([【\[]?[^\n；;】\]]{4,100}[】\]]?)/g, placeholder: "【地址】" },
-    { category: "address", regex: /(?:注册地址|办公地址|通讯地址|送达地址|联系地址|开票地址|发票地址|账单地址|住所地|住所|经营场所|项目地址|服务地址|交付地址|收货地址|履约地点|(?:^|\n)[ \t　]*地址)[：:，,.。\s　]*([【\[]?[^\n；;】\]]{4,100}[】\]]?)/gm, placeholder: "【地址】" },
+    { category: "address", regex: /(?:地址(?:、|及)电话)[：:，,.。\s　]*([^\n|；;]{4,120})/g, placeholder: "【地址及联系方式】" },
+    { category: "address", regex: new RegExp(`(?:${partyLabelSource})[：:，,.。\\s　]*(?:公司名称[：:，,.。\\s　]*[^\\n|；;]{2,80})?[：:，,.。\\s　]*地址[：:，,.。\\s　]*([【\\[]?[^\\n|；;】\\]]{4,120}[】\\]]?)`, "g"), placeholder: "【地址】" },
+    { category: "address", regex: /(?:注册地址|办公地址|通讯地址|通信地址|送达地址|联系地址|开票地址|发票地址|账单地址|住所地|住所|经营场所|项目地址|服务地址|交付地址|收货地址|履约地点|(?:^|[\n|])[ \t　]*地址)[：:，,.。\s　]*([【\[]?[^\n|；;】\]]{4,120}[】\]]?)/gm, placeholder: "【地址】" },
+    { category: "address", regex: /(?:位于|坐落于|所在地为|项目地点为|工程地点为|工程地址为)[：:，,.。\s　]*([^\n，,；;。|]{4,120})/g, placeholder: "【地址】" },
     { category: "person", regex: /(?:收件人|收货人|接收人)[ \t　]*[：:；;，,.。]?[ \t　]*([【\[][^】\]\n|；;]{2,40}[】\]])/g, placeholder: "【收件人】" },
-    { category: "person", regex: /(?:法定代表人\s*[（(]\s*或\s*授权代表\s*[）)]|授权人|授权代表|签字人|签字代表|签署人)(?:姓名|名称|岗位|职务)?[ \t　]*[：:；;，,.。\s　]+([【\[][^】\]\n|]{2,60}[】\]]|[（(][^）)\n|]{2,60}[）)]|[\u4e00-\u9fa5·A-Za-z]{2,20}(?:[，,、][\u4e00-\u9fa5·A-Za-z ]{1,30})?)/g, placeholder: "【授权代表信息】" },
-    { category: "person", regex: /(?:联系人|收件人|收货人|接收人|经办人|法定代表人|负责人)(?:姓名|岗位|职务)?(?:[ \t　]*[：:，,.。][ \t　]*|[ \t　]+)((?:[【\[（(][\s　]*)?[\u4e00-\u9fa5·]{2,12}(?:[\s　]*[】\]\）)])?)/g, placeholder: "【联系人】" },
+    { category: "person", regex: /(?:联系人及联系方式|联系人和联系方式|联系人\/联系方式|联系人、联系方式)[ \t　]*[：:；;，,.。]?[ \t　]*([\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,20})(?=[ \t　]*(?:电话|手机|邮箱|电邮|传真|$))/g, placeholder: "【联系人】" },
+    { category: "person", regex: /(?:法定代表人\s*[（(]\s*或\s*授权代表\s*[）)]|授权人|授权代表|签字人|签字代表|签署人|委托代理人|发包人代表|承包人代表|项目经理|项目负责人|总监理工程师)(?:[（(][^）)\n]{1,12}[）)])?(?:姓名|名称|岗位|职务)?(?:[ \t　]*[：:；;，,.。][ \t　]*|[ \t　]+)([【\[][^】\]\n|]{2,60}[】\]]|[（(][^）)\n|]{2,60}[）)]|[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,28}?)(?=[ \t　]*(?:电话|手机|邮箱|电邮|传真|联系人|联系人及联系方式|授权代表|地址|姓名|职务|岗位|[；;，,.。|]|\n|$))/g, placeholder: "【授权代表信息】" },
+    { category: "person", regex: /(?:联系人|收件人|收货人|接收人|经办人|法定代表人|负责人|授权代表|委托代理人|发包人代表|承包人代表|项目经理|项目负责人)(?:[（(][^）)\n]{1,12}[）)])?(?:姓名|岗位|职务)?(?:[ \t　]*[：:，,.。][ \t　]*|[ \t　]+)((?:[【\[（(][\s　]*)?[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,28}?)(?=[ \t　]*(?:电话|手机|邮箱|电邮|传真|联系人|联系人及联系方式|授权代表|地址|姓名|职务|岗位|[；;，,.。|]|\n|$))/g, placeholder: "【联系人】" },
+    { category: "person", regex: /(?:姓名|姓\s*名|职务|岗位)[ \t　]*[：:，,.。][ \t　]*([【\[（(]?[ \t　]*[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,28}[】\]\）)]?)/g, placeholder: "【人员信息】" },
     { category: "bankName", regex: /(?:开户行|开户银行)(?:及|、)(?:账号|帐号)[：:，,.。\s　]*([^\n；;]{4,120})/g, placeholder: "【开户行及账号已删除】" },
     { category: "bankName", regex: /(?:开户银行|账户开户行|开户行)[：:，,.。\s　]*([^\n；;]{2,80})/g, placeholder: "【开户行已删除】" },
-    { category: "amount", regex: /(?:金额大写|价款大写|费用大写|大写)[：:，,.。\s　]*((?:人民币)?[\s　]*[【\[]\s*[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆元圆角分整正]{2,60}\s*[】\]])/g, placeholder: "【合同金额】" },
-    { category: "amount", regex: /(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|单价|金额)[：:，,.。\s　]*((?:人民币|港币|美元|欧元|HK\$|US\$|CNY|RMB|USD|¥|￥|\$|€|£)?[\s　]*[【\[（(]?[\s　]*(?:\d{1,3}(?:[,，]\d{3})+|\d+)(?:\.\d{1,2})?[\s　]*(?:万|亿)?[\s　]*[】\]\）)]?[\s　]*(?:元|美元|港元|欧元|英镑)?)/gi, placeholder: "【合同金额】" },
-    { category: "amount", regex: /(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|金额)[：:，,.。\s　]*((?:人民币)?[\s　]*[【\[（(]?[\s　]*[零〇壹贰叁肆伍陆柒捌玖拾佰仟萬万億亿兆]{1,40}(?:元|圆)[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?[\s　]*[】\]\）)]?)/g, placeholder: "【合同金额】" },
+    { category: "amount", regex: new RegExp(`(?:金额大写|价款大写|费用大写|大写)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?)`, "gi"), placeholder: "【合同金额】" },
+    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|单价|金额)[：:，,.。\\s　]*((?:${currencyNamePattern}|${currencySymbolPattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?[\\s　]*(?:万|亿)?[\\s　]*[】\\]\\）)]?[\\s　]*(?:元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)?)`, "gi"), placeholder: "【合同金额】" },
+    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|金额)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?[\\s　]*[】\\]\\）)]?)`, "gi"), placeholder: "【合同金额】" },
     { category: "numericSpec", regex: /(?:范围|区间|标准要求|参数|结果(?:为)?)[：:，,.。\s　]*(\d+(?:\.\d+)?\s*(?:-|—|–|~|到|至|to)\s*\d+(?:\.\d+)?)/gi, placeholder: "X-Y" },
     {
       category: "project",
@@ -492,20 +558,69 @@ function extractLabeledFields(text) {
   return fields;
 }
 
+function extractContextualPersons(text) {
+  const fields = [];
+  const nameSource = "[\\u4e00-\\u9fa5·]{2,4}";
+
+  function addName(start, value, placeholder = "【人员姓名】") {
+    const clean = value.trim();
+    if (!isLikelyPersonOrRoleValue(clean)) return;
+    fields.push({ start, value: clean, category: "person", placeholder });
+  }
+
+  const lecturerRegex = /(?:讲师|培训讲师|授课老师|授课教师|主讲人)[ \t　]*(?:为|是)?[：:，,.。\s　]*([^，,。\n；;]{2,60})/g;
+  for (const match of text.matchAll(lecturerRegex)) {
+    const segment = match[1];
+    const segmentStart = match.index + match[0].indexOf(segment);
+    let cursor = 0;
+    for (const token of segment.split(/[、,，和及与\s　]+/)) {
+      if (!token) continue;
+      const localIndex = segment.indexOf(token, cursor);
+      cursor = localIndex + token.length;
+      if (!new RegExp(`^${nameSource}$`).test(token)) continue;
+      addName(segmentStart + localIndex, token);
+    }
+  }
+
+  const lawyerRegex = new RegExp(`(?:^|[、,，\\s　])(${nameSource})(?=律师)`, "g");
+  for (const match of text.matchAll(lawyerRegex)) {
+    const value = match[1];
+    const relativeIndex = match[0].indexOf(value);
+    addName(match.index + relativeIndex, value);
+  }
+
+  const lawyerSegmentRegex = /(?:指派|委托|聘请|保证|由)[^。\n；;]{0,100}律师[^。\n；;]{0,80}/g;
+  for (const segmentMatch of text.matchAll(lawyerSegmentRegex)) {
+    const segment = segmentMatch[0];
+    const nameBeforeLawyerRegex = new RegExp(`(?:本所)?(${nameSource})(?=律师)`, "g");
+    for (const nameMatch of segment.matchAll(nameBeforeLawyerRegex)) {
+      const value = nameMatch[1];
+      if (/(主办|代理|承办|团队|人员|合伙|本案|出庭)/.test(value)) continue;
+      const relativeIndex = nameMatch[0].lastIndexOf(value);
+      addName(segmentMatch.index + nameMatch.index + relativeIndex, value);
+    }
+  }
+
+  return fields;
+}
+
 function isLikelyPersonOrRoleValue(value) {
   const clean = value.replace(/^[【\[（(\s　]+|[】\]\）)\s　]+$/g, "");
   if (clean.length < 2 || clean.length > 60) return false;
   if (/(?:已获得|获得法定|法定资格|应当|应为|有权|无权|可以|不得|签署本|签订本|或授权|以及|并且)/.test(clean)) return false;
+  if (/^(?:姓名|姓\s*名|名称|名\s*称|职务|岗位|地址|通讯地址|通信地址|联系电话|电子信箱|电子邮箱)$/.test(clean)) return false;
+  if (isLikelyPartyName(clean) || isLikelyAddressValue(clean)) return false;
   const parts = clean.split(/[，,、]/).map((item) => item.trim()).filter(Boolean);
   if (parts.length > 2 || parts.length === 0) return false;
-  const nameOrRole = /^[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z ]{1,29}$/;
+  const nameOrRole = /^[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,29}$/;
   return parts.every((part) => nameOrRole.test(part));
 }
 
 function isLikelyAddressValue(value) {
   const clean = value.replace(/^[【\[（(\s　]+|[】\]\）)\s　]+$/g, "");
   if (/(?:下述|上述|相关方|书面通知|电邮地址|传真号码|其他地址)/.test(clean)) return false;
-  return /(?:省|市|区|县|镇|乡|村|路|街|道|巷|号|楼|室|大厦|广场|园区|开发区|自治区|特别行政区)/.test(clean) || /\d/.test(clean);
+  if (clean.length < 4 || clean.length > 140) return false;
+  return /(?:省|市|区|县|镇|乡|村|路|街|道|巷|号|楼|室|座|层|大厦|广场|园区|开发区|自治区|特别行政区)/.test(clean) && /\d|号|室|楼|座|层|园|区|路|街|道|村|镇/.test(clean);
 }
 
 function addTermMatches(target, term, placeholder = "【敏感信息】") {
@@ -529,7 +644,7 @@ function addCandidate(target, start, value, category, placeholder) {
 }
 
 function mergeCandidates(candidates) {
-  const priority = { contractNumber: 18, idCard: 17, creditCode: 16, bankAccount: 15, bankName: 14, email: 13, phone: 12, entityA: 11, entityB: 11, entityC: 11, entityD: 11, entityE: 11, entityF: 11, entityG: 11, entityH: 11, entityI: 11, entityJ: 11, address: 10, person: 9, project: 8, custom: 7, date: 6, duration: 5, installment: 4, ratio: 3, percentage: 2, numericSpec: 1, amount: 0 };
+  const priority = { contractNumber: 18, idCard: 17, creditCode: 16, bankAccount: 15, bankName: 14, email: 13, phone: 12, entityA: 11, entityB: 11, entityC: 11, entityD: 11, entityE: 11, entityF: 11, entityG: 11, entityH: 11, entityI: 11, entityJ: 11, entityOther: 11, address: 10, person: 9, project: 8, custom: 7, date: 6, duration: 5, installment: 4, ratio: 3, percentage: 2, numericSpec: 1, amount: 0 };
   const sorted = candidates
     .filter((item) => item.value && !isClauseNumberCandidate(item))
     .sort((a, b) => a.start - b.start || b.end - a.end || priority[b.category] - priority[a.category]);
@@ -566,6 +681,7 @@ function isClauseNumberCandidate(candidate) {
 }
 
 function renderReview() {
+  $("pdfReviewNotice").hidden = state.sourceFormat !== "pdf";
   els.sourceFileName.textContent = state.fileName;
   els.matchCount.textContent = state.matches.length;
   const typeNotice = state.contractTypeMode === "auto"
@@ -677,6 +793,9 @@ function renderPreview() {
   const selected = state.matches.filter((item) => item.selected).sort((a, b) => a.start - b.start);
   els.previewDocument.innerHTML = highlightText(state.sourceText, selected, true);
   state.outputText = applyMatches(state.sourceText, selected);
+  if (state.sourceFormat === "pdf") {
+    state.outputText = `> ${state.warnings.join("\n> ")}\n\n${state.outputText}`;
+  }
 }
 
 function applyMatches(text, matches) {
@@ -708,12 +827,14 @@ function addQuickTerm() {
 function prepareExport() {
   revokeDownloadUrls();
   renderPreview();
-  prepareDownloadLink(els.downloadMdButton, `${safeFilenamePart(contractTypeLabel())}_脱敏版.md`, state.outputText);
+  prepareDownloadLink(els.downloadMdButton, `${safeFilenamePart(contractTypeLabel())}_${state.sourceFormat === "pdf" ? "PDF文字提取_" : ""}脱敏版.md`, state.outputText);
   prepareDownloadLink(els.downloadReportButton, "合同_脱敏报告.md", buildReport());
   els.openMdButton.href = markdownDataUrl(state.outputText);
   const selected = state.matches.filter((item) => item.selected);
   const unselectedHighRisk = state.matches.filter((item) => !item.selected && categoryConfig[item.category].risk === "high");
-  els.exportSummaryText.textContent = `已处理 ${selected.length} 处候选信息，输出文件只包含脱敏后的合同内容。`;
+  els.exportSummaryText.textContent = state.sourceFormat === "pdf"
+    ? `已处理 ${selected.length} 处候选信息。导出仅包含 PDF 提取文字的脱敏稿，不代表原 PDF 已脱敏或内容完整。`
+    : `已处理 ${selected.length} 处候选信息，输出文件只包含脱敏后的合同内容。`;
   els.riskCallout.hidden = unselectedHighRisk.length === 0;
   els.riskCallout.textContent = unselectedHighRisk.length
     ? `你保留了 ${unselectedHighRisk.length} 处高风险信息。仍可导出，但请确认这些内容可以提交给大模型。`
@@ -793,6 +914,8 @@ async function copyText(text) {
 }
 
 function resetApp() {
+  ++importGeneration;
+  state.sourceFormat = "";
   revokeDownloadUrls();
   state.fileName = "";
   state.sourceText = "";

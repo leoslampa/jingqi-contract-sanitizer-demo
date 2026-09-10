@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <title>净契｜合同脱敏台</title>
-    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="styles.css?v=20260910" />
   </head>
   <body>
     <header class="topbar">
@@ -43,17 +43,21 @@
       <section id="importPanel" class="panel import-layout">
         <div>
           <div id="dropZone" class="drop-zone" role="group" aria-label="拖拽添加合同附件，或点击选择附件">
-            <input id="fileInput" type="file" accept=".md,.markdown,.docx" hidden />
+            <input id="fileInput" type="file" accept=".md,.markdown,.docx,.doc,.pdf" hidden />
             <div class="file-glyph" aria-hidden="true"><span>条款</span></div>
             <p class="drop-title">拖拽添加合同附件</p>
-            <p class="drop-help">将文件拖到此处，或点击下方按钮 · 支持 Markdown、DOCX</p>
+            <p class="drop-help">支持 Markdown、DOCX · PDF 文字导入（实验）</p>
             <div class="drop-actions">
               <button id="chooseFileButton" class="primary-button" type="button">选择合同附件</button>
               <button id="demoButton" class="secondary-button" type="button">试用虚构样例</button>
             </div>
             <p class="drop-privacy">单份附件 · 全程本地 · 原文件不会被修改</p>
           </div>
-          <div id="fileNotice" class="notice" hidden></div>
+          <div class="notice">
+            <p><strong>旧版 DOC 为什么需要转换？</strong>旧版 Word 的存储格式较复杂，当前工具直接读取时可能遗漏正文、表格等内容。请用 Word / WPS 打开，选择“另存为 → Word 文档（.docx）”后再导入；仅修改文件后缀无效。</p>
+            <p><strong>PDF 实验导入处理什么？</strong>仅提取可读取的文字，复核脱敏后导出 Markdown。图片、扫描内容、印章、批注及附件不纳入输出；表格和阅读顺序可能变化，请逐页对照原件。原 PDF 不会被修改，也不能作为脱敏文件分享。</p>
+          </div>
+          <div id="fileNotice" class="notice" role="status" aria-live="polite" hidden></div>
         </div>
 
         <aside class="settings-card" aria-labelledby="settingsTitle">
@@ -106,6 +110,7 @@
         </div>
 
         <div id="warningStrip" class="warning-strip" hidden></div>
+        <p id="pdfReviewNotice" class="notice" hidden>左侧展示的是 PDF 提取文字，并非原件全貌。请按页码对照原 PDF，检查遗漏、乱码和表格顺序，再复核敏感信息。</p>
 
         <div class="review-grid">
           <section class="document-pane" aria-labelledby="sourceTitle">
@@ -187,10 +192,10 @@
     </main>
 
     <footer>
-      <span>净契 MVP · 浏览器本地处理</span>
+      <span>净契 · 公开测试版 2026.09.10 · 浏览器本地处理</span>
       <span>请在导出前完成人工复核</span>
     </footer>
 
-    <script src="app.js"></script>
+    <script src="app.js?v=20260910"></script>
   </body>
 </html>
