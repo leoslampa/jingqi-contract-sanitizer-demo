@@ -6,7 +6,7 @@ const state = {
   matches: [],
   warnings: [],
   contractType: "generic",
-  contractTypeName: "通用合同",
+  contractTypeName: "通用文书",
   contractTypeMode: "auto",
   outputText: "",
   downloadUrls: [],
@@ -66,12 +66,12 @@ const categoryConfig = {
   creditCode: { label: "统一社会信用代码", placeholder: "【统一社会信用代码已删除】", risk: "high" },
   bankAccount: { label: "银行账号", placeholder: "【银行账号已删除】", risk: "high" },
   bankName: { label: "开户行", placeholder: "【开户行已删除】", risk: "high" },
-  amount: { label: "金额", placeholder: "【合同金额】", risk: "medium" },
+  amount: { label: "金额", placeholder: "【金额】", risk: "medium" },
   percentage: { label: "百分比", placeholder: "X%", risk: "medium" },
   ratio: { label: "比例", placeholder: "【比例】", risk: "medium" },
   installment: { label: "分期安排", placeholder: "X期", risk: "medium" },
   numericSpec: { label: "技术数值", placeholder: "X", risk: "medium" },
-  contractNumber: { label: "合同编号", placeholder: "【合同编号】", risk: "high" },
+  contractNumber: { label: "文档编号", placeholder: "【文档编号】", risk: "high" },
   date: { label: "日期", placeholder: "20XX年XX月XX日", risk: "medium" },
   duration: { label: "期限", placeholder: "Y日", risk: "medium" },
   custom: { label: "自定义敏感词", placeholder: "【敏感信息】", risk: "medium" },
@@ -103,12 +103,12 @@ const patterns = [
   { category: "phone", regex: /(?<!\d)(?:[（(]\s*0\d{2,3}\s*[）)]|0\d{2,3})[\s　-]*\d{3,4}[\s　-]*\d{4}(?!\d)(?:\s*[（(]\s*(?:总机|转\s*\d+)\s*[）)])?/g },
   { category: "bankAccount", regex: /(?<!\d)(?:\d[ -]?){16,24}(?!\d)/g },
   { category: "date", regex: /[【\[]\s*(?:20\d{2}|19\d{2})\s*[】\]]\s*年\s*[【\[]\s*(?:0?[1-9]|1[0-2])\s*[】\]]\s*月(?:\s*[【\[]\s*(?:0?[1-9]|[12]\d|3[01])\s*[】\]]\s*日)?/g, placeholder: (match) => match[0].includes("日") ? "20XX年XX月XX日" : "20XX年XX月" },
-  { category: "amount", regex: new RegExp(`${currencyNamePattern}\\s*(?:金额|价款|费用)?大写\\s*[：:]\\s*[【\\[（(]?\\s*${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【合同金额】" },
-  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?(?:¥|￥|\\$|€|£)?\\s*\\d{1,3}(?:[,，]\\d{3})+(?:\\.\\d{1,2})?\\s*[（(]\\s*(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[）)]`, "gi"), placeholder: "【合同金额】" },
+  { category: "amount", regex: new RegExp(`${currencyNamePattern}\\s*(?:金额|价款|费用)?大写\\s*[：:]\\s*[【\\[（(]?\\s*${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【金额】" },
+  { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?(?:¥|￥|\\$|€|£)?\\s*\\d{1,3}(?:[,，]\\d{3})+(?:\\.\\d{1,2})?\\s*[（(]\\s*(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[）)]`, "gi"), placeholder: "【金额】" },
   { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?(?:¥|￥|\\$|€|£)?\\s*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?\\s*(?:亿元|万元|万(?!\\s*(?:平方米|平方|平米|㎡|m²))|元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)(?:\\s*[（(]\\s*(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[）)])?`, "gi"), placeholder: (match) => {
     const context = match.input.slice(Math.max(0, match.index - 16), match.index);
-    if (/(?:合同总额|合同总金额|合同金额|费用总额)\s*(?:为|是|：|:)?\s*$/.test(context)) return "【合同金额】";
-    if (new RegExp(`${currencyNamePattern}|${currencySymbolPattern}`, "i").test(match[0])) return "【合同金额】";
+    if (/(?:合同总额|合同总金额|合同金额|费用总额)\s*(?:为|是|：|:)?\s*$/.test(context)) return "【金额】";
+    if (new RegExp(`${currencyNamePattern}|${currencySymbolPattern}`, "i").test(match[0])) return "【金额】";
     return `X${(match[0].match(/(?:亿元|万元|万|元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)(?=\s*(?:[（(]|$))/) || ["元"])[0]}`;
   } },
   { category: "amount", regex: /(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)\s*\d+(?:\.\d+)?\s*(?:亿元|万元|万(?!\s*(?:平方米|平方|平米|㎡|m²))|元)/g, placeholder: (match) => `${(match[0].match(/^(?:>=|<=|=>|=<|≥|≤|≈|≃|≅|≒|>|<|=|~)/) || [""])[0]}X${(match[0].match(/(?:亿元|万元|万|元)$/) || ["元"])[0]}` },
@@ -116,7 +116,7 @@ const patterns = [
   { category: "amount", regex: /(?:人民币\s*)?[【\[]\s*\d+(?:\.\d{1,2})?\s*(?:万|亿)?\s*[】\]]\s*元/g },
   { category: "amount", regex: /(?:人民币\s*)?[【\[]\s*\d+\.\d{1,2}\s*[】\]]/g },
   { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?[【\\[]\\s*${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]]`, "gi") },
-  { category: "amount", regex: new RegExp(`(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【合同金额】" },
+  { category: "amount", regex: new RegExp(`(?:大写\\s*[：:]?\\s*)?(?:${currencyNamePattern}\\s*)?[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?`, "gi"), placeholder: "【金额】" },
   { category: "amount", regex: /(?<!\d)\d+(?:\.\d{1,2})?(?=\s*元\s*\/\s*[^/\s，,；;。]{1,12}\s*\/\s*(?:月|日|年))/g, placeholder: "X" },
   { category: "amount", regex: /(?<!\d)\d+(?:\.\d{1,2})?(?=\s*[】\]\）)]?\s*元(?![\d]))/g, placeholder: "X" },
   { category: "amount", regex: new RegExp(`(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?`, "gi") },
@@ -295,7 +295,7 @@ async function handleFile(file) {
 
     if (generation !== importGeneration) return;
     if (text.length > IMPORT_LIMITS.textCharacters) throw new Error('提取文字超过 20 万字符，请分段处理。');
-    if (!text.trim()) throw new Error("没有读取到可处理的合同文字。请检查文件内容。");
+    if (!text.trim()) throw new Error("没有读取到可处理的文字。请检查文件内容。");
     state.warnings = warnings;
     state.sourceFormat = extension;
     state.fileName = file.name;
@@ -303,9 +303,9 @@ async function handleFile(file) {
     state.contractTypeMode = els.contractType.value;
     const manualType = els.manualContractType.value.trim();
     if (state.contractTypeMode === "manual" && !manualType) {
-      els.manualContractType.setCustomValidity("请输入合同类型。");
+      els.manualContractType.setCustomValidity("请输入文书类型。");
       els.manualContractType.reportValidity();
-      throw new Error("选择手动输入后，请填写合同类型。");
+      throw new Error("选择手动输入后，请填写文书类型。");
     }
     els.manualContractType.setCustomValidity("");
     state.contractType = resolveContractType(state.contractTypeMode, state.sourceText, manualType);
@@ -343,16 +343,28 @@ function normalizeText(text) {
 }
 
 function resolveContractType(mode, text, manualType = "") {
+  // Classify explicit document headings before contract keywords in their body.
+  const headings = mode === "manual" ? [manualType] : text.split("\n").slice(0, 8);
+  for (const heading of headings) {
+    const clean = heading.replace(/^\s*#{1,6}\s*/, "").trim();
+    if (!/^[\u4e00-\u9fa5A-Za-z0-9 ·（）()《》_-]{2,80}$/.test(clean)) continue;
+    if (/(?:授权委托书|委托书)[》）)]?$/.test(clean)) return "mandate";
+    if (/授权书[》）)]?$/.test(clean)) return "authorization";
+    if (/(?:声明函|声明书|承诺函|承诺书)[》）)]?$/.test(clean)) return "statement";
+    if (/(?:函|通知书)[》）)]?$/.test(clean)) return "letter";
+  }
   const source = mode === "manual" ? `${manualType}\n${text}` : text;
+  if (!/(?:合同|协议|契约)/.test(source)) return "generic";
   const techTerms = ["技术开发", "合作开发", "研发", "技术成果", "技术指标", "知识产权", "源代码", "技术秘密"];
   const purchaseTerms = ["采购合同", "采购方", "供应方", "供应商", "采购标的", "货物", "供货", "订单", "质量保证"];
   const techScore = techTerms.reduce((score, term) => score + (source.includes(term) ? 1 : 0), 0);
   const purchaseScore = purchaseTerms.reduce((score, term) => score + (source.includes(term) ? 1 : 0), 0);
-  if (techScore === 0 && purchaseScore === 0) return "generic";
+  if (techScore === 0 && purchaseScore === 0) return "contract";
   return techScore > purchaseScore ? "tech" : "purchase";
 }
 
 function detectContractTypeName(text, type) {
+  if (["authorization", "mandate", "statement", "letter", "generic"].includes(type)) return defaultContractTypeLabel(type);
   const lines = text.split("\n").slice(0, 30);
   for (const line of lines) {
     const clean = line.replace(/^\s*(?:#{1,6}|\|)\s*/, "").replace(/\|.*$/, "").trim();
@@ -363,9 +375,14 @@ function detectContractTypeName(text, type) {
 }
 
 function defaultContractTypeLabel(type = state.contractType) {
+  if (type === "authorization") return "授权书";
+  if (type === "mandate") return "委托书";
+  if (type === "statement") return "声明或承诺文书";
+  if (type === "letter") return "业务函件";
+  if (type === "contract") return "通用合同";
   if (type === "tech") return "技术合作开发合同";
   if (type === "purchase") return "业务采购合同";
-  return "通用合同";
+  return "通用文书";
 }
 
 function contractTypeLabel() {
@@ -382,7 +399,7 @@ function syncContractTypeInput() {
 }
 
 function safeFilenamePart(value) {
-  return value.replace(/[\\/:*?"<>|\r\n]+/g, "_").trim() || "合同";
+  return value.replace(/[\\/:*?"<>|\r\n]+/g, "_").trim() || "文档";
 }
 
 function buildMatches() {
@@ -410,7 +427,7 @@ function buildMatches() {
     const regex = flexibleEntityRegex(party.value);
     for (const match of state.sourceText.matchAll(regex)) {
       const expanded = expandSquareWrapper(state.sourceText, match.index, match.index + match[0].length);
-      addCandidate(found, expanded.start, state.sourceText.slice(expanded.start, expanded.end), party.category);
+      addCandidate(found, expanded.start, state.sourceText.slice(expanded.start, expanded.end), party.category, party.placeholder);
     }
   });
 
@@ -441,8 +458,8 @@ function buildMatches() {
 
 function extractParties(text) {
   const definitions = [
-    { stem: "甲", category: "entityA", labels: ["甲方", "委托方", "采购方", "买方"] },
-    { stem: "乙", category: "entityB", labels: ["乙方", "受托方", "供应方", "卖方"] },
+    { stem: "甲", category: "entityA", labels: ["甲方", "采购方", "买方"] },
+    { stem: "乙", category: "entityB", labels: ["乙方", "供应方", "卖方"] },
     { stem: "丙", category: "entityC", labels: ["丙方"] },
     { stem: "丁", category: "entityD", labels: ["丁方"] },
     { stem: "戊", category: "entityE", labels: ["戊方"] },
@@ -474,7 +491,32 @@ function extractParties(text) {
 
   const parties = scan(preamble);
   if (!parties.length && preamble.length < text.length) parties.push(...scan(text));
-  return parties.filter((party, index, list) => list.findIndex((item) => item.value === party.value && item.category === party.category) === index);
+  // Role declarations require a field boundary and a colon/wrapper. In particular,
+  // never match 授权人 inside 被授权人 or interpret prose about authority as a name.
+  const roles = "被授权人|被授权方|授权人|授权方|委托人|受托人|委托方|受托方|声明人|声明方|承诺人|承诺方|出具方";
+  const name = String.raw`(?:[^\n：:；;，,|【\]】]{2,80}${companySuffixPattern}|[\u4e00-\u9fa5·]{2,4}|[A-Za-z][A-Za-z .'-]{1,48})`;
+  const declaration = new RegExp(String.raw`(?:^|[\n|；;])[ \t　]*(?:${roles})[ \t　]*(?:[（(][^）)\n]{1,20}[）)])?(?:名称|姓名)?[ \t　]*(?:[：:][ \t　]*[|]?[ \t　]*[【\[（(]?[ \t　]*|[【\[])(` + name + String.raw`)(?=[ \t　]*(?:[【\[（(】\]）)；;，,|]|\n|$))`, "g");
+  for (const match of text.matchAll(declaration)) {
+    const value = match[1].trim();
+    if (!isLikelyPartyName(value) && !isLikelyPersonOrRoleValue(value)) continue;
+    if (/^(?:姓名|名称|待填写|未填写|授权范围|委托事项)$/.test(value)) continue;
+    if (parties.some(party => party.value === value)) continue;
+    const used = new Set(parties.map(party => party.category));
+    const category = Object.keys(categoryConfig).find(key => /^entity[A-J]$/.test(key) && !used.has(key));
+    parties.push({value, category: category || "entityOther", ...(category ? {} : {placeholder: `【主体${parties.length + 1}】`})});
+  }
+  const unique = parties.filter((party, index, list) => list.findIndex(item => item.value === party.value) === index);
+  const reserved = new Set(unique.map(party => party.category));
+  const assigned = new Set();
+  return unique.map(party => {
+    if (assigned.has(party.category)) {
+      const free = Object.keys(categoryConfig).find(key => /^entity[A-J]$/.test(key) && !reserved.has(key));
+      if (free) { party = {...party, category: free}; reserved.add(free); }
+      else if (!party.placeholder) party = {...party, category: "entityOther", placeholder: `【主体${unique.indexOf(party) + 1}】`};
+    }
+    assigned.add(party.category);
+    return party;
+  });
 }
 
 function contractPreamble(text) {
@@ -506,7 +548,7 @@ function flexibleEntitySource(value) {
 
 function extractPartyAliases(text, parties) {
   const aliases = [];
-  const blocked = new Set(["甲方", "乙方", "丙方", "丁方", "戊方", "己方", "庚方", "辛方", "壬方", "癸方", "双方", "各方", "本公司", "该公司", "一方", "对方"]);
+  const blocked = new Set(["甲方", "乙方", "丙方", "丁方", "戊方", "己方", "庚方", "辛方", "壬方", "癸方", "双方", "各方", "本公司", "该公司", "一方", "对方", "授权人", "被授权人", "授权方", "被授权方", "委托人", "受托人", "委托方", "受托方", "声明人", "承诺人"]);
   parties.forEach((party) => {
     const source = flexibleEntitySource(party.value);
     const regex = new RegExp(`${source}[ \\t　]*[】\\]]?[ \\t　]*[（(【\\[][^\\n]{0,30}?(?:以下简称|以下称|后称|简称|略称)[：:，, \\t　]*(?:为[：:，, \\t　]*)?[“\"‘']?([^”\"’'\\n，,；;）)\\]】]{1,20})`, "g");
@@ -517,7 +559,7 @@ function extractPartyAliases(text, parties) {
       aliases.push({
         value: alias,
         category: party.category,
-        placeholder: `【主体${party.category.replace("entity", "")}简称】`,
+        placeholder: party.placeholder ? party.placeholder.replace("】", "简称】") : `【主体${party.category.replace("entity", "")}简称】`,
       });
     }
   });
@@ -544,14 +586,14 @@ function expandSquareWrapper(text, start, end) {
   const pairs = { "【": "】", "[": "]" };
   const open = text[start - 1];
   const close = text[end];
-  if (pairs[open] === close) return { start: start - 1, end: end + 1 };
+  if (pairs[open] && pairs[open] === close) return { start: start - 1, end: end + 1 };
   return { start, end };
 }
 
 function extractLabeledFields(text) {
   const fields = [];
   const labeledPatterns = [
-    { category: "contractNumber", regex: /(?:合同编号|合同号|协议编号|协议号|订单编号|项目编号)[：:，,.。\s　]*([【\[（(]?[A-Za-z0-9\u4e00-\u9fa5._/—–\-]{3,80}[】\]\）)]?)/g, placeholder: "【合同编号】" },
+    { category: "contractNumber", regex: /(?:授权书编号|委托书编号|声明函编号|文书编号|文档编号|函件编号|合同编号|合同号|协议编号|协议号|订单编号|项目编号)[：:，,.。\s　]*([【\[（(]?[A-Za-z0-9\u4e00-\u9fa5._/—–\-]{3,80}[】\]\）)]?)/g, placeholder: "【文档编号】" },
     { category: "address", regex: /(?:地址(?:、|及)电话)[：:，,.。\s　]*([^\n|；;]{4,120})/g, placeholder: "【地址及联系方式】" },
     { category: "address", regex: new RegExp(`(?:${partyLabelSource})[：:，,.。\\s　]*(?:公司名称[：:，,.。\\s　]*[^\\n|；;]{2,80})?[：:，,.。\\s　]*地址[：:，,.。\\s　]*([【\\[]?[^\\n|；;】\\]]{4,120}[】\\]]?)`, "g"), placeholder: "【地址】" },
     { category: "address", regex: /(?:注册地址|办公地址|通讯地址|通信地址|送达地址|联系地址|开票地址|发票地址|账单地址|住所地|住所|经营场所|项目地址|服务地址|交付地址|收货地址|履约地点|(?:^|[\n|])[ \t　]*地址)[：:，,.。\s　]*([【\[]?[^\n|；;】\]]{4,120}[】\]]?)/gm, placeholder: "【地址】" },
@@ -563,9 +605,9 @@ function extractLabeledFields(text) {
     { category: "person", regex: /(?:姓名|姓\s*名|职务|岗位)[ \t　]*[：:，,.。][ \t　]*([【\[（(]?[ \t　]*[\u4e00-\u9fa5·A-Za-z][\u4e00-\u9fa5·A-Za-z \t　]{1,28}[】\]\）)]?)/g, placeholder: "【人员信息】" },
     { category: "bankName", regex: /(?:开户行|开户银行)(?:及|、)(?:账号|帐号)[：:，,.。\s　]*([^\n；;]{4,120})/g, placeholder: "【开户行及账号已删除】" },
     { category: "bankName", regex: /(?:开户银行|账户开户行|开户行)[：:，,.。\s　]*([^\n；;]{2,80})/g, placeholder: "【开户行已删除】" },
-    { category: "amount", regex: new RegExp(`(?:金额大写|价款大写|费用大写|大写)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?)`, "gi"), placeholder: "【合同金额】" },
-    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|单价|金额)[：:，,.。\\s　]*((?:${currencyNamePattern}|${currencySymbolPattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?[\\s　]*(?:万|亿)?[\\s　]*[】\\]\\）)]?[\\s　]*(?:元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)?)`, "gi"), placeholder: "【合同金额】" },
-    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|金额)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?[\\s　]*[】\\]\\）)]?)`, "gi"), placeholder: "【合同金额】" },
+    { category: "amount", regex: new RegExp(`(?:金额大写|价款大写|费用大写|大写)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?\\s*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?\\s*[】\\]\\）)]?)`, "gi"), placeholder: "【金额】" },
+    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|单价|金额)[：:，,.。\\s　]*((?:${currencyNamePattern}|${currencySymbolPattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:\\d{1,3}(?:[,，]\\d{3})+|\\d+)(?:\\.\\d{1,2})?[\\s　]*(?:万|亿)?[\\s　]*[】\\]\\）)]?[\\s　]*(?:元|美元|美金|港元|港币|欧元|英镑|日元|澳元|加元|新加坡元|新币)?)`, "gi"), placeholder: "【金额】" },
+    { category: "amount", regex: new RegExp(`(?:合同总额|合同金额|费用总额|服务费用|服务费|含税金额|不含税金额|价款|租金|违约金|保证金|押金|金额)[：:，,.。\\s　]*((?:${currencyNamePattern})?[\\s　]*[【\\[（(]?[\\s　]*(?:${currencyNamePattern}\\s*)?${chineseUpperMoneyPattern}${chineseUpperMoneyUnitPattern}?[零〇壹贰叁肆伍陆柒捌玖拾佰仟角分]*(?:整|正)?[\\s　]*[】\\]\\）)]?)`, "gi"), placeholder: "【金额】" },
     { category: "numericSpec", regex: /(?:范围|区间|标准要求|参数|结果(?:为)?)[：:，,.。\s　]*(\d+(?:\.\d+)?\s*(?:-|—|–|~|到|至|to)\s*\d+(?:\.\d+)?)/gi, placeholder: "X-Y" },
     {
       category: "project",
@@ -635,7 +677,7 @@ function isLikelyPersonOrRoleValue(value) {
   const clean = value.replace(/^[【\[（(\s　]+|[】\]\）)\s　]+$/g, "");
   if (clean.length < 2 || clean.length > 60) return false;
   if (/(?:已获得|获得法定|法定资格|应当|应为|有权|无权|可以|不得|签署本|签订本|或授权|以及|并且)/.test(clean)) return false;
-  if (/^(?:姓名|姓\s*名|名称|名\s*称|职务|岗位|地址|通讯地址|通信地址|联系电话|电子信箱|电子邮箱)$/.test(clean)) return false;
+  if (/^(?:待填写|未填写|待补充|未提供|授权范围|委托事项|姓名|姓\s*名|名称|名\s*称|职务|岗位|地址|通讯地址|通信地址|联系电话|电子信箱|电子邮箱)$/.test(clean)) return false;
   if (isLikelyPartyName(clean) || isLikelyAddressValue(clean)) return false;
   const parts = clean.split(/[，,、]/).map((item) => item.trim()).filter(Boolean);
   if (parts.length > 2 || parts.length === 0) return false;
@@ -712,8 +754,8 @@ function renderReview() {
   els.sourceFileName.textContent = state.fileName;
   els.matchCount.textContent = state.matches.length;
   const typeNotice = state.contractTypeMode === "auto"
-    ? [`已自动识别为${contractTypeLabel()}。`]
-    : [`已按手动输入类型“${contractTypeLabel()}”处理。`];
+    ? [`文书参考分类：${contractTypeLabel()}（自动判断，请复核）。`]
+    : [`已参考手动输入，导出使用通用类别“${contractTypeLabel()}”。`];
   const notices = [...typeNotice, ...state.warnings];
   els.warningStrip.hidden = notices.length === 0;
   els.warningStrip.textContent = notices.join(" ");
@@ -841,7 +883,7 @@ function addQuickTerm() {
   const additions = [];
   addTermMatches(additions, term, `【敏感信息】`);
   if (!additions.length) {
-    els.quickTerm.setCustomValidity("原合同中没有找到这个词。");
+    els.quickTerm.setCustomValidity("原文中没有找到这个词。");
     els.quickTerm.reportValidity();
     return;
   }
@@ -856,13 +898,13 @@ function prepareExport() {
   renderPreview();
   const summary = summaryHistory.record(state.matches);
   prepareDownloadLink(els.downloadMdButton, `${safeFilenamePart(contractTypeLabel())}_${state.sourceFormat === "pdf" ? "PDF文字提取_" : ""}脱敏版.md`, state.outputText);
-  prepareDownloadLink(els.downloadReportButton, "合同_脱敏报告.md", buildReport(summary));
+  prepareDownloadLink(els.downloadReportButton, "文档_脱敏报告.md", buildReport(summary));
   els.openMdButton.href = markdownDataUrl(state.outputText);
   const selected = state.matches.filter((item) => item.selected);
   const unselectedHighRisk = state.matches.filter((item) => !item.selected && categoryConfig[item.category].risk === "high");
   els.exportSummaryText.textContent = state.sourceFormat === "pdf"
     ? `已处理 ${selected.length} 处候选信息。导出仅包含 PDF 提取文字的脱敏稿，不代表原 PDF 已脱敏或内容完整。`
-    : `已处理 ${selected.length} 处候选信息，输出文件只包含脱敏后的合同内容。`;
+    : `已处理 ${selected.length} 处候选信息，输出文件只包含脱敏后的文本内容。`;
   els.riskCallout.hidden = unselectedHighRisk.length === 0;
   els.riskCallout.textContent = unselectedHighRisk.length
     ? `你保留了 ${unselectedHighRisk.length} 处高风险信息。仍可导出，但请确认这些内容可以提交给大模型。`
@@ -873,12 +915,17 @@ function prepareExport() {
 
 function buildReviewPrompt() {
   const type = contractTypeLabel();
-  const focus = state.contractType === "tech"
-    ? "重点检查研发分工、技术成果、知识产权归属、验收、付款、保密、违约与退出机制。"
-    : state.contractType === "purchase"
-      ? "重点检查采购标的、价格与税费、交付、验收、付款账期、质量责任、违约与争议解决。"
-      : "重点检查合同主体、权利义务、金额与付款、履行期限、验收、保密、违约、解除与争议解决。";
-  return `请审查随附的脱敏版${type}。\n\n${focus}\n\n请按以下结构输出：\n1. 合同核心安排摘要；\n2. 对各方不利或不明确的条款；\n3. 缺失但建议补充的条款；\n4. 按高、中、低标注风险等级；\n5. 每项判断引用对应条款。\n\n请区分“合同明确约定”“合同未约定”和“需要人工确认”。不要猜测占位符对应的真实主体、金额、日期或项目。\n\n提示：AI 分析仅供参考，不能替代律师或企业法务的专业判断。`;
+  const focuses = {
+    tech: "重点检查研发分工、技术成果、知识产权归属、验收、付款、保密、违约与退出机制。",
+    purchase: "重点检查采购标的、价格与税费、交付、验收、付款账期、质量责任、违约与争议解决。",
+    contract: "重点检查各方角色、权利义务、金额与付款、履行期限、验收、保密、违约、解除与争议解决。",
+    authorization: "重点检查授权人与被授权人的对应关系、授权事项、权限范围、地域、有效期、转授权条件、撤销与终止条件。",
+    mandate: "重点检查委托人与受托人的对应关系、委托事项、代理权限、期限、转委托条件、撤销与终止条件。",
+    statement: "重点检查出具主体、声明或承诺事项、适用对象、条件、例外、期限及责任边界。",
+    letter: "重点检查发出方与接收方、函件目的、事实陈述、要求或回应、期限及责任边界。",
+    generic: "先判断文本用途，再检查涉及的人物或组织、核心事项、条件、例外、期限及前后是否一致。",
+  };
+  return `请分析随附的脱敏版${type}。\n\n${focuses[state.contractType] || focuses.generic}\n\n请按以下结构输出：\n1. 核心内容摘要及相关各方角色；\n2. 不明确、矛盾或需核实的内容；\n3. 结合文书用途提出修改或补充建议，不机械套用合同条款清单；\n4. 如涉及风险，说明影响及判断依据；\n5. 每项判断引用对应段落或条款。\n\n请区分“原文明确载明”“原文未载明”“原值已隐藏”和“提取缺失”。不要猜测占位符对应的真实主体、金额、日期或项目，也不要把隐藏值当成原文漏填。因脱敏或提取缺失而无法判断的事项，请明确列出并要求本地回查原件。\n\n提示：AI 分析仅供参考，不能替代专业判断；涉及法律事项时应由律师或企业法务复核。`;
 }
 
 function buildReport(summary) {
@@ -893,7 +940,7 @@ function buildReport(summary) {
     "",
     `- 摘要任务编号：${summary.id}`,
     `- 工具版本：${summary.version}`,
-    `- 合同类型：${contractTypeLabel()}${state.contractTypeMode === "auto" ? "（自动识别）" : "（手动输入）"}`,
+    `- 文书类型：${contractTypeLabel()}${state.contractTypeMode === "auto" ? "（自动识别）" : "（手动输入）"}`,
     `- 处理时间：${new Date(summary.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })}（UTC+8）`,
     `- 输出格式：Markdown`,
     "- 说明：本报告不记录任何原始敏感值。",
@@ -955,7 +1002,7 @@ function resetApp() {
   state.warnings = [];
   state.outputText = "";
   state.contractType = "generic";
-  state.contractTypeName = "通用合同";
+  state.contractTypeName = "通用文书";
   state.contractTypeMode = "auto";
   els.fileInput.value = "";
   els.contractType.value = "auto";
@@ -989,7 +1036,7 @@ async function parseDocx(arrayBuffer, signal) {
 
   const warnings = [];
   if ([...entries.keys()].some((name) => name.startsWith("word/media/"))) warnings.push("文档包含图片；MVP 不读取图片内容，请人工检查图片中的敏感信息。");
-  if (entries.has("word/comments.xml")) warnings.push("文档包含批注；批注不会写入输出，请确认其中没有必须保留的合同内容。");
+  if (entries.has("word/comments.xml")) warnings.push("文档包含批注；批注不会写入输出，请确认其中没有必须保留的文档内容。");
   if ([...entries.keys()].some((name) => name.startsWith("word/embeddings/"))) warnings.push("文档包含嵌入附件；附件未处理，请单独检查。");
 
   const parts = [documentXml];

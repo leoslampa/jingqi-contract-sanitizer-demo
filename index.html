@@ -5,8 +5,8 @@
     <!-- security-policy:start --><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'" /><meta name="referrer" content="no-referrer" /><!-- security-policy:end -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
-    <title>净契｜合同脱敏台</title>
-    <link rel="stylesheet" href="styles.css?v=4804d55b94" />
+    <title>净契｜文本脱敏台</title>
+    <link rel="stylesheet" href="styles.css?v=8659026698" />
   </head>
   <body>
     <header class="topbar">
@@ -14,7 +14,7 @@
         <span class="brand-mark" aria-hidden="true">净</span>
         <span>
           <strong>净契</strong>
-          <small>合同脱敏台</small>
+          <small>文本脱敏台</small>
         </span>
       </a>
       <div class="local-status" role="status">
@@ -27,11 +27,11 @@
     <main>
       <section class="intro" aria-labelledby="pageTitle">
         <div>
-          <p class="eyebrow">给 AI 之前，先把合同留在你手里</p>
-          <h1 id="pageTitle">识别敏感信息，<br />留下可判断的条款</h1>
+          <p class="eyebrow">给 AI 之前，先把原文留在你手里</p>
+          <h1 id="pageTitle">识别敏感信息，<br />留下可理解的内容</h1>
         </div>
         <p class="intro-copy">
-          导入技术合作或采购合同，在本机完成识别与替换。你确认之后，才会生成可提交给大模型的 Markdown。
+          合同、授权书、委托书、声明函等文本，在本机完成识别与替换。复核后导出 Markdown，供后续 AI 分析或其他用途。
         </p>
       </section>
 
@@ -43,28 +43,28 @@
             <button id="clearHistoryButton" class="quiet-button" type="button">清空摘要历史</button>
           </div>
           <p id="historyHelp">默认仅本次打开可见，刷新后消失。开启后保留当前及后续摘要，最多 100 条、30 天；到期在页面打开期间或下次访问时清理。关闭保存会清除全部摘要历史。</p>
-          <p class="history-boundary">每次点击“完成复核”生成一条摘要，不保存文件名、合同正文或敏感原值，不能恢复合同。记录不代表已确认安全。“清除本次内容”不会删除摘要历史。</p>
+          <p class="history-boundary">每次点击“完成复核”生成一条摘要，不保存文件名、文档正文或敏感原值，不能恢复原文。记录不代表已确认安全。“清除本次内容”不会删除摘要历史。</p>
           <p id="historyStatus" role="status" aria-live="polite"></p>
-          <p id="historyEmpty">暂无摘要。导入合同并点击“完成复核”后，可在这里回看处理数量。</p>
+          <p id="historyEmpty">暂无摘要。导入文档并点击“完成复核”后，可在这里回看处理数量。</p>
           <ol id="historyList" class="history-list"></ol>
         </div>
       </details>
 
       <nav class="steps" aria-label="处理步骤">
-        <span class="step is-active" data-step="1"><b>01</b> 导入合同</span>
+        <span class="step is-active" data-step="1"><b>01</b> 导入文档</span>
         <span class="step" data-step="2"><b>02</b> 复核替换</span>
         <span class="step" data-step="3"><b>03</b> 安全导出</span>
       </nav>
 
       <section id="importPanel" class="panel import-layout">
         <div>
-          <div id="dropZone" class="drop-zone" role="group" aria-label="拖拽添加合同附件，或点击选择附件">
+          <div id="dropZone" class="drop-zone" role="group" aria-label="拖拽添加文档附件，或点击选择附件">
             <input id="fileInput" type="file" accept=".md,.markdown,.docx,.doc,.pdf" hidden />
-            <div class="file-glyph" aria-hidden="true"><span>条款</span></div>
-            <p class="drop-title">拖拽添加合同附件</p>
+            <div class="file-glyph" aria-hidden="true"><span>文本</span></div>
+            <p class="drop-title">拖拽添加文档附件</p>
             <p class="drop-help">支持 Markdown、DOCX · PDF 文字导入（实验）</p>
             <div class="drop-actions">
-              <button id="chooseFileButton" class="primary-button" type="button">选择合同附件</button>
+              <button id="chooseFileButton" class="primary-button" type="button">选择文档附件</button>
               <button id="demoButton" class="secondary-button" type="button">试用虚构样例</button>
             </div>
             <p class="drop-privacy">单份附件 · 全程本地 · 原文件不会被修改</p>
@@ -84,7 +84,7 @@
           </div>
 
           <label class="field">
-            <span>合同类型 <small>可选</small></span>
+            <span>文书类型 <small>可选</small></span>
             <select id="contractType">
               <option value="auto" selected>自动识别（推荐）</option>
               <option value="manual">手动输入</option>
@@ -92,9 +92,11 @@
           </label>
 
           <label id="manualContractTypeField" class="field" hidden>
-            <span>输入合同类型</span>
-            <input id="manualContractType" type="text" maxlength="40" placeholder="例如：房屋租赁合同" />
+            <span>输入文书类型</span>
+            <input id="manualContractType" type="text" maxlength="40" placeholder="例如：授权书、业务函件" />
           </label>
+
+          <p class="drop-privacy">类型仅辅助分析，不限制识别范围。请重点复核文书各方、授权范围、期限及遗漏信息。</p>
 
           <fieldset class="choice-group">
             <legend>精确金额</legend>
@@ -132,7 +134,7 @@
         <div class="review-grid">
           <section class="document-pane" aria-labelledby="sourceTitle">
             <header>
-              <span>原合同</span>
+              <span>原文</span>
               <small id="sourceFileName"></small>
             </header>
             <div id="sourceDocument" class="document-surface" tabindex="0"></div>
@@ -200,7 +202,7 @@
         <aside class="prompt-card">
           <div class="section-heading">
             <span>下一步</span>
-            <h2>合同审查提示词</h2>
+            <h2>文书分析提示词</h2>
           </div>
           <textarea id="reviewPrompt" rows="13" readonly></textarea>
           <button id="copyPromptButton" class="secondary-button full-width" type="button">复制提示词</button>
@@ -211,11 +213,11 @@
     </main>
 
     <footer>
-      <!-- product-version:start --><span class="product-version">净契 · 公开测试版 <strong>2026.09.14.2+4804d55b94</strong><small>构建于 2026-09-14 09:34:13（UTC+8） · 浏览器本地处理</small></span><!-- product-version:end -->
+      <!-- product-version:start --><span class="product-version">净契 · 公开测试版 <strong>2026.09.14.3+8659026698</strong><small>构建于 2026-09-14 10:37:11（UTC+8） · 浏览器本地处理</small></span><!-- product-version:end -->
       <span><a href="privacy.html" target="_blank" rel="noopener">隐私政策（新窗口）</a> · 请在导出前完成人工复核</span>
     </footer>
 
-    <script src="summary-history.js?v=4804d55b94"></script>
-    <script src="app.js?v=4804d55b94"></script>
+    <script src="summary-history.js?v=8659026698"></script>
+    <script src="app.js?v=8659026698"></script>
   </body>
 </html>

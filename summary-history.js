@@ -38,7 +38,7 @@ function createSummaryHistory(categories) {
     try { saved = JSON.parse(raw); } catch { saved = null; }
     if (!saved || saved.enabled !== true || !Array.isArray(saved.records)) {
       localStorage.removeItem(key);
-      status.textContent = "无法读取原有摘要，已清除无效记录；可以继续处理合同。";
+      status.textContent = "无法读取原有摘要，已清除无效记录；可以继续处理文档。";
       return { enabled: false, records: [] };
     }
     const safe = { enabled: true, records: clean(saved.records) };
@@ -126,7 +126,7 @@ function createSummaryHistory(categories) {
     sync();
     try {
       save([]);
-      status.textContent = "已清空摘要历史，当前合同内容不受影响。";
+      status.textContent = "已清空摘要历史，当前文档内容不受影响。";
     } catch { status.textContent = "清空失败，已保存的摘要可能仍在；请重试或在浏览器设置中清除此站点数据。"; }
     render();
   });

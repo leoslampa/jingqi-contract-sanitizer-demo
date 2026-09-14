@@ -95,7 +95,7 @@ export async function parsePdf(arrayBuffer, onProgress = () => {}, signal) {
         }
         if (!characters) throw new Error("整份 PDF 未提取到可读取文字，可能是扫描件或图片文件。当前不支持扫描文字识别，请先转换并校对文字，或提供 DOCX。");
         const warnings = [PDF_SCOPE_NOTICE, `共 ${pdf.numPages} 页，其中 ${pdf.numPages - emptyPages.length} 页提取到文字；提取到文字不代表该页内容完整。`];
-        if (emptyPages.length) warnings.push(`第 ${emptyPages.join("、")} 页没有提取到文字，已在稿内标记，请勿将缺失内容理解为合同未约定。`);
+        if (emptyPages.length) warnings.push(`第 ${emptyPages.join("、")} 页没有提取到文字，已在稿内标记，请勿将缺失内容理解为原文未载明。`);
         if (sparsePages.length) warnings.push(`第 ${sparsePages.join("、")} 页提取文字很少，可能仅有页码或标题，请检查扫描内容是否遗漏。`);
         return { markdown: pages.join("\n\n"), warnings };
       })(),
