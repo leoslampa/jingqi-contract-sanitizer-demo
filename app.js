@@ -13,6 +13,8 @@ const state = {
   sourceFormat: "",
 };
 let importGeneration = 0;
+let exportGeneration = 0;
+let activeImport = null;
 
 const $ = (id) => document.getElementById(id);
 const els = {
@@ -74,6 +76,8 @@ const categoryConfig = {
   duration: { label: "期限", placeholder: "Y日", risk: "medium" },
   custom: { label: "自定义敏感词", placeholder: "【敏感信息】", risk: "medium" },
 };
+
+const summaryHistory = createSummaryHistory(categoryConfig);
 
 const batchGroups = {
   amount: { label: "金额", categories: new Set(["amount"]) },
@@ -228,6 +232,18 @@ function escapeRegex(value) {
 }
 
 function setStep(step) {
+  if (step !== 3) {
+    ++exportGeneration;
+    revokeDownloadUrls();
+    els.reviewPrompt.value = "";
+    els.exportSummaryText.textContent = "";
+    els.riskCallout.textContent = "";
+    els.riskCallout.hidden = true;
+    for (const id of ["copyMdButton", "copyPromptButton"]) {
+      $(id).disabled = false;
+      $(`${id}Status`).textContent = "";
+    }
+  }
   document.querySelectorAll(".step").forEach((item) => item.classList.toggle("is-active", Number(item.dataset.step) === step));
   els.importPanel.hidden = step !== 1;
   els.reviewPanel.hidden = step !== 2;
@@ -243,17 +259,24 @@ function showNotice(message, isError = false) {
 
 async function handleFile(file) {
   if (!file) return;
+  activeImport?.abort();
+  const controller = new AbortController();
+  activeImport = controller;
   const generation = ++importGeneration;
   const extension = file.name.split(".").pop().toLowerCase();
   showNotice("正在本地读取文件……");
 
   try {
+    const { IMPORT_LIMITS } = await import('./docx-reader.mjs');
+    if (generation !== importGeneration) return;
     let text = "";
     const warnings = [];
     if (["md", "markdown"].includes(extension)) {
+      if (file.size > IMPORT_LIMITS.inputBytes) throw new Error('Markdown 暂限 10 MB，请分段处理。');
       text = await file.text();
     } else if (extension === "docx") {
-      const result = await parseDocx(await file.arrayBuffer());
+      if (file.size > IMPORT_LIMITS.inputBytes) throw new Error('DOCX 暂限 10 MB，请分段处理。');
+      const result = await parseDocx(await file.arrayBuffer(), controller.signal);
       text = result.markdown;
       warnings.push(...result.warnings);
     } else if (extension === "pdf") {
@@ -261,7 +284,7 @@ async function handleFile(file) {
       const { parsePdf } = await import("./pdf-import.mjs");
       const result = await parsePdf(await file.arrayBuffer(), (page, total) => {
         if (generation === importGeneration) showNotice(`正在本地提取 PDF 文字：第 ${page} / ${total} 页……`);
-      });
+      }, controller.signal);
       text = result.markdown;
       warnings.push(...result.warnings);
     } else if (extension === "doc") {
@@ -271,6 +294,7 @@ async function handleFile(file) {
     }
 
     if (generation !== importGeneration) return;
+    if (text.length > IMPORT_LIMITS.textCharacters) throw new Error('提取文字超过 20 万字符，请分段处理。');
     if (!text.trim()) throw new Error("没有读取到可处理的合同文字。请检查文件内容。");
     state.warnings = warnings;
     state.sourceFormat = extension;
@@ -297,6 +321,8 @@ async function handleFile(file) {
 }
 
 function loadDemo() {
+  activeImport?.abort();
+  activeImport = null;
   ++importGeneration;
   state.sourceFormat = "md";
   state.fileName = "虚构技术合作合同.md";
@@ -343,7 +369,8 @@ function defaultContractTypeLabel(type = state.contractType) {
 }
 
 function contractTypeLabel() {
-  return state.contractTypeName || defaultContractTypeLabel();
+  // Output metadata must never reuse a title or manual label from the source.
+  return defaultContractTypeLabel();
 }
 
 function syncContractTypeInput() {
@@ -827,8 +854,9 @@ function addQuickTerm() {
 function prepareExport() {
   revokeDownloadUrls();
   renderPreview();
+  const summary = summaryHistory.record(state.matches);
   prepareDownloadLink(els.downloadMdButton, `${safeFilenamePart(contractTypeLabel())}_${state.sourceFormat === "pdf" ? "PDF文字提取_" : ""}脱敏版.md`, state.outputText);
-  prepareDownloadLink(els.downloadReportButton, "合同_脱敏报告.md", buildReport());
+  prepareDownloadLink(els.downloadReportButton, "合同_脱敏报告.md", buildReport(summary));
   els.openMdButton.href = markdownDataUrl(state.outputText);
   const selected = state.matches.filter((item) => item.selected);
   const unselectedHighRisk = state.matches.filter((item) => !item.selected && categoryConfig[item.category].risk === "high");
@@ -853,7 +881,7 @@ function buildReviewPrompt() {
   return `请审查随附的脱敏版${type}。\n\n${focus}\n\n请按以下结构输出：\n1. 合同核心安排摘要；\n2. 对各方不利或不明确的条款；\n3. 缺失但建议补充的条款；\n4. 按高、中、低标注风险等级；\n5. 每项判断引用对应条款。\n\n请区分“合同明确约定”“合同未约定”和“需要人工确认”。不要猜测占位符对应的真实主体、金额、日期或项目。\n\n提示：AI 分析仅供参考，不能替代律师或企业法务的专业判断。`;
 }
 
-function buildReport() {
+function buildReport(summary) {
   const grouped = new Map();
   state.matches.forEach((match) => {
     const key = categoryConfig[match.category].label;
@@ -863,8 +891,10 @@ function buildReport() {
   const lines = [
     "# 脱敏报告",
     "",
+    `- 摘要任务编号：${summary.id}`,
+    `- 工具版本：${summary.version}`,
     `- 合同类型：${contractTypeLabel()}${state.contractTypeMode === "auto" ? "（自动识别）" : "（手动输入）"}`,
-    `- 处理时间：${new Date().toLocaleString("zh-CN", { hour12: false })}`,
+    `- 处理时间：${new Date(summary.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false })}（UTC+8）`,
     `- 输出格式：Markdown`,
     "- 说明：本报告不记录任何原始敏感值。",
     "",
@@ -914,6 +944,8 @@ async function copyText(text) {
 }
 
 function resetApp() {
+  activeImport?.abort();
+  activeImport = null;
   ++importGeneration;
   state.sourceFormat = "";
   revokeDownloadUrls();
@@ -928,18 +960,30 @@ function resetApp() {
   els.fileInput.value = "";
   els.contractType.value = "auto";
   els.manualContractType.value = "";
+  els.manualContractType.setCustomValidity('');
   syncContractTypeInput();
   els.customTerms.value = "";
   els.quickTerm.value = "";
+  els.quickTerm.setCustomValidity('');
+  els.sourceFileName.textContent = '';
+  els.reviewPrompt.value = '';
+  els.exportSummaryText.textContent = '';
+  els.riskCallout.textContent = '';
+  els.riskCallout.hidden = true;
+  els.warningStrip.textContent = '';
+  els.warningStrip.hidden = true;
+  $('pdfReviewNotice').hidden = true;
+  els.matchCount.textContent = '0';
   els.sourceDocument.textContent = "";
   els.previewDocument.textContent = "";
   els.findingsList.replaceChildren();
+  updateBatchControls();
   showNotice("");
   setStep(1);
 }
 
-async function parseDocx(arrayBuffer) {
-  const entries = await unzipEntries(arrayBuffer);
+async function parseDocx(arrayBuffer, signal) {
+  const entries = await unzipEntries(arrayBuffer, signal);
   const documentXml = entries.get("word/document.xml");
   if (!documentXml) throw new Error("DOCX 中没有找到正文，文件可能已经损坏。");
 
@@ -962,50 +1006,9 @@ async function parseDocx(arrayBuffer) {
   return { markdown: markdownParts.join("").trim(), warnings };
 }
 
-async function unzipEntries(arrayBuffer) {
-  const view = new DataView(arrayBuffer);
-  const bytes = new Uint8Array(arrayBuffer);
-  const decoder = new TextDecoder("utf-8");
-  let eocd = -1;
-  for (let index = bytes.length - 22; index >= Math.max(0, bytes.length - 65557); index -= 1) {
-    if (view.getUint32(index, true) === 0x06054b50) { eocd = index; break; }
-  }
-  if (eocd < 0) throw new Error("无法读取 DOCX 压缩结构，文件可能不是有效的 DOCX。");
-
-  const totalEntries = view.getUint16(eocd + 10, true);
-  let offset = view.getUint32(eocd + 16, true);
-  const output = new Map();
-
-  for (let entryIndex = 0; entryIndex < totalEntries; entryIndex += 1) {
-    if (view.getUint32(offset, true) !== 0x02014b50) break;
-    const compression = view.getUint16(offset + 10, true);
-    const compressedSize = view.getUint32(offset + 20, true);
-    const nameLength = view.getUint16(offset + 28, true);
-    const extraLength = view.getUint16(offset + 30, true);
-    const commentLength = view.getUint16(offset + 32, true);
-    const localOffset = view.getUint32(offset + 42, true);
-    const name = decoder.decode(bytes.slice(offset + 46, offset + 46 + nameLength));
-
-    if (name.startsWith("word/") && !name.endsWith("/")) {
-      const localNameLength = view.getUint16(localOffset + 26, true);
-      const localExtraLength = view.getUint16(localOffset + 28, true);
-      const dataStart = localOffset + 30 + localNameLength + localExtraLength;
-      const compressed = bytes.slice(dataStart, dataStart + compressedSize);
-      let raw;
-      if (compression === 0) raw = compressed;
-      else if (compression === 8) raw = await inflateRaw(compressed);
-      else throw new Error(`DOCX 使用了暂不支持的压缩方式（${compression}）。`);
-      output.set(name, decoder.decode(raw));
-    }
-    offset += 46 + nameLength + extraLength + commentLength;
-  }
-  return output;
-}
-
-async function inflateRaw(bytes) {
-  if (!("DecompressionStream" in window)) throw new Error("当前浏览器不支持本地解析 DOCX，请使用最新版 Chrome、Edge 或 Safari。");
-  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
+async function unzipEntries(arrayBuffer, signal) {
+  const { readDocxEntries } = await import('./docx-reader.mjs');
+  return readDocxEntries(arrayBuffer, signal);
 }
 
 function wordXmlToMarkdown(xmlText) {
@@ -1086,30 +1089,54 @@ $("selectAllButton").addEventListener("click", () => { state.matches.forEach((it
 document.querySelectorAll("[data-batch-group]").forEach((button) => {
   button.addEventListener("click", () => toggleBatchGroup(button.dataset.batchGroup));
 });
-els.copyMdButton.addEventListener("click", async () => {
+async function copyWithFeedback(button, text) {
+  const generation = exportGeneration;
+  const status = $(`${button.id}Status`);
+  button.disabled = true;
+  status.textContent = "正在复制……";
   try {
-    await copyText(state.outputText);
-    const original = els.copyMdButton.textContent;
-    els.copyMdButton.textContent = "已复制 Markdown";
-    setTimeout(() => { els.copyMdButton.textContent = original; }, 1600);
-  } catch (error) {
-    els.riskCallout.hidden = false;
-    els.riskCallout.textContent = error.message;
+    await copyText(text);
+    if (generation === exportGeneration) status.textContent = "已复制。";
+  } catch {
+    if (generation === exportGeneration) {
+      status.textContent = button.id === "copyPromptButton"
+        ? "复制未成功，请选中上方提示词后手动复制，或检查浏览器剪贴板权限后重试。"
+        : "复制未成功，请下载脱敏 Markdown，或检查浏览器剪贴板权限后重试。";
+    }
+  } finally {
+    if (generation === exportGeneration) button.disabled = false;
   }
-});
-$("copyPromptButton").addEventListener("click", async () => {
-  await copyText(els.reviewPrompt.value);
-  const button = $("copyPromptButton");
-  const original = button.textContent;
-  button.textContent = "已复制";
-  setTimeout(() => { button.textContent = original; }, 1400);
-});
+}
+els.copyMdButton.addEventListener("click", () => copyWithFeedback(els.copyMdButton, state.outputText));
+$("copyPromptButton").addEventListener("click", () => copyWithFeedback($("copyPromptButton"), els.reviewPrompt.value));
 
 window.addEventListener("beforeunload", () => {
+  activeImport?.abort();
   revokeDownloadUrls();
   state.sourceText = "";
   state.matches = [];
   state.outputText = "";
 });
+
+// 本地自动化测试入口；正常打开页面时不会执行。
+if (new URLSearchParams(window.location.search).get("fixture") === "docx") {
+  fetch("tests/fixture.docx")
+    .then((response) => response.arrayBuffer())
+    .then(parseDocx)
+    .then((result) => {
+      state.fileName = "fixture.docx";
+      state.sourceText = normalizeText(result.markdown);
+      state.contractTypeMode = "auto";
+      state.contractType = resolveContractType("auto", state.sourceText);
+      state.contractTypeName = detectContractTypeName(state.sourceText, state.contractType);
+      els.contractType.value = "auto";
+      syncContractTypeInput();
+      state.warnings = result.warnings;
+      buildMatches();
+      renderReview();
+      setStep(2);
+    })
+    .catch((error) => showNotice(`DOCX 测试失败：${error.message}`, true));
+}
 
 syncContractTypeInput();

@@ -2,10 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
+    <!-- security-policy:start --><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' blob:; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; base-uri 'none'; object-src 'none'; form-action 'none'; frame-src 'none'" /><meta name="referrer" content="no-referrer" /><!-- security-policy:end -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light" />
     <title>净契｜合同脱敏台</title>
-    <link rel="stylesheet" href="styles.css?v=20260910" />
+    <link rel="stylesheet" href="styles.css?v=4804d55b94" />
   </head>
   <body>
     <header class="topbar">
@@ -27,12 +28,27 @@
       <section class="intro" aria-labelledby="pageTitle">
         <div>
           <p class="eyebrow">给 AI 之前，先把合同留在你手里</p>
-          <h1 id="pageTitle">识别敏感信息，<br />留下可判断的条款。</h1>
+          <h1 id="pageTitle">识别敏感信息，<br />留下可判断的条款</h1>
         </div>
         <p class="intro-copy">
           导入技术合作或采购合同，在本机完成识别与替换。你确认之后，才会生成可提交给大模型的 Markdown。
         </p>
       </section>
+
+      <details id="summaryHistory" class="summary-history">
+        <summary>摘要历史 <span id="historyCount">0 条</span></summary>
+        <div class="history-body">
+          <div class="history-controls">
+            <label><input id="persistHistory" type="checkbox" aria-describedby="historyHelp" /> 在此浏览器保留历史</label>
+            <button id="clearHistoryButton" class="quiet-button" type="button">清空摘要历史</button>
+          </div>
+          <p id="historyHelp">默认仅本次打开可见，刷新后消失。开启后保留当前及后续摘要，最多 100 条、30 天；到期在页面打开期间或下次访问时清理。关闭保存会清除全部摘要历史。</p>
+          <p class="history-boundary">每次点击“完成复核”生成一条摘要，不保存文件名、合同正文或敏感原值，不能恢复合同。记录不代表已确认安全。“清除本次内容”不会删除摘要历史。</p>
+          <p id="historyStatus" role="status" aria-live="polite"></p>
+          <p id="historyEmpty">暂无摘要。导入合同并点击“完成复核”后，可在这里回看处理数量。</p>
+          <ol id="historyList" class="history-list"></ol>
+        </div>
+      </details>
 
       <nav class="steps" aria-label="处理步骤">
         <span class="step is-active" data-step="1"><b>01</b> 导入合同</span>
@@ -52,6 +68,7 @@
               <button id="demoButton" class="secondary-button" type="button">试用虚构样例</button>
             </div>
             <p class="drop-privacy">单份附件 · 全程本地 · 原文件不会被修改</p>
+            <p class="drop-privacy">Markdown / DOCX 限 10 MB · 提取文字限 20 万字符</p>
           </div>
           <div class="notice">
             <p><strong>旧版 DOC 为什么需要转换？</strong>旧版 Word 的存储格式较复杂，当前工具直接读取时可能遗漏正文、表格等内容。请用 Word / WPS 打开，选择“另存为 → Word 文档（.docx）”后再导入；仅修改文件后缀无效。</p>
@@ -92,7 +109,7 @@
 
           <div class="privacy-note">
             <span aria-hidden="true">⌁</span>
-            <p><strong>没有上传按钮。</strong>网页不加载统计脚本，也不会把合同内容发送到网络。</p>
+            <p><strong>个人信息不上传，全部文件处理在本机完成。</strong>我们不收集你提交的个人信息，也不在服务器端处理。<a href="privacy.html" target="_blank" rel="noopener">查看隐私政策（新窗口）</a></p>
           </div>
         </aside>
       </section>
@@ -177,6 +194,7 @@
             <button id="copyMdButton" class="secondary-button" type="button">复制 Markdown</button>
             <button id="returnReviewButton" class="quiet-button" type="button">返回复核</button>
           </div>
+          <p id="copyMdButtonStatus" role="status" aria-live="polite"></p>
         </div>
 
         <aside class="prompt-card">
@@ -186,16 +204,18 @@
           </div>
           <textarea id="reviewPrompt" rows="13" readonly></textarea>
           <button id="copyPromptButton" class="secondary-button full-width" type="button">复制提示词</button>
+          <p id="copyPromptButtonStatus" role="status" aria-live="polite"></p>
           <p>AI 分析仅供参考，不能替代律师或企业法务的专业判断。</p>
         </aside>
       </section>
     </main>
 
     <footer>
-      <span>净契 · 公开测试版 2026.09.10 · 浏览器本地处理</span>
-      <span>请在导出前完成人工复核</span>
+      <!-- product-version:start --><span class="product-version">净契 · 公开测试版 <strong>2026.09.14.2+4804d55b94</strong><small>构建于 2026-09-14 09:34:13（UTC+8） · 浏览器本地处理</small></span><!-- product-version:end -->
+      <span><a href="privacy.html" target="_blank" rel="noopener">隐私政策（新窗口）</a> · 请在导出前完成人工复核</span>
     </footer>
 
-    <script src="app.js?v=20260910"></script>
+    <script src="summary-history.js?v=4804d55b94"></script>
+    <script src="app.js?v=4804d55b94"></script>
   </body>
 </html>

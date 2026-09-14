@@ -25,23 +25,52 @@ export function textFromItems(items) {
   return text.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
-export async function parsePdf(arrayBuffer, onProgress = () => {}) {
+export async function parsePdf(arrayBuffer, onProgress = () => {}, signal) {
+  if (signal?.aborted) throw new DOMException("导入已取消", "AbortError");
   if (typeof DecompressionStream === "undefined") throw new Error("当前浏览器不支持本地 PDF 组件加载，请更新 Chrome、Edge 或 Safari 后再试。");
   if (arrayBuffer.byteLength > 30 * 1024 * 1024) throw new Error("PDF 实验导入暂限 30 MB。");
-  const task = pdfjs.getDocument({
-    data: new Uint8Array(arrayBuffer),
-    cMapUrl: new URL("./vendor/pdfjs/cmaps/", import.meta.url).href,
-    cMapPacked: true,
-    standardFontDataUrl: new URL("./vendor/pdfjs/standard_fonts/", import.meta.url).href,
-    isEvalSupported: false,
-    useWasm: false,
-    stopAtErrors: true,
-    verbosity: 0,
+  // Own the native worker so a stalled startup/handshake can also be terminated.
+  // PDFDocumentLoadingTask.destroy() alone may wait for that handshake forever.
+  const worker = new Worker(pdfjs.GlobalWorkerOptions.workerSrc, { type: "module" });
+  let task, pdfWorker, timer, onReady, rejectInterruption;
+  let stopped = false;
+  const ready = new Promise((resolve) => {
+    onReady = ({ data }) => {
+      if (data?.sourceName === "worker" && data?.targetName === "main" && data?.action === "ready") resolve();
+    };
+    worker.addEventListener("message", onReady);
   });
-  let timer;
+  const interruption = new Promise((_, reject) => { rejectInterruption = reject; });
+  const stop = (error) => {
+    stopped = true;
+    worker.terminate();
+    rejectInterruption(error);
+  };
+  const cancel = () => stop(new DOMException("导入已取消", "AbortError"));
+  const failed = (event) => {
+    event.preventDefault();
+    stop(new Error("PDF 本地解析组件无法运行，请刷新页面后重试。"));
+  };
+  signal?.addEventListener("abort", cancel, { once: true });
+  worker.addEventListener("error", failed);
+  timer = setTimeout(() => stop(new Error("PDF 读取超时，已停止处理，请分段处理或改用 DOCX。")), 60000);
   try {
     return await Promise.race([
       (async () => {
+        await ready;
+        if (stopped) throw new DOMException("导入已取消", "AbortError");
+        pdfWorker = new pdfjs.PDFWorker({ port: worker });
+        task = pdfjs.getDocument({
+          worker: pdfWorker,
+          data: new Uint8Array(arrayBuffer),
+          cMapUrl: new URL("./vendor/pdfjs/cmaps/", import.meta.url).href,
+          cMapPacked: true,
+          standardFontDataUrl: new URL("./vendor/pdfjs/standard_fonts/", import.meta.url).href,
+          isEvalSupported: false,
+          useWasm: false,
+          stopAtErrors: true,
+          verbosity: 0,
+        });
         const pdf = await task.promise;
         if (pdf.numPages > 200) throw new Error("PDF 实验导入暂限 200 页，请分段处理。");
         const pages = [];
@@ -70,7 +99,7 @@ export async function parsePdf(arrayBuffer, onProgress = () => {}) {
         if (sparsePages.length) warnings.push(`第 ${sparsePages.join("、")} 页提取文字很少，可能仅有页码或标题，请检查扫描内容是否遗漏。`);
         return { markdown: pages.join("\n\n"), warnings };
       })(),
-      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error("PDF 读取超时，请分段处理或改用 DOCX。")), 60000); }),
+      interruption,
     ]);
   } catch (error) {
     if (error.name === "PasswordException") throw new Error("PDF 已加密，当前无法读取。请在有权访问的情况下，使用可正常打开的未加密副本。");
@@ -78,6 +107,20 @@ export async function parsePdf(arrayBuffer, onProgress = () => {}) {
     throw error;
   } finally {
     clearTimeout(timer);
-    await task.destroy();
+    signal?.removeEventListener("abort", cancel);
+    worker.removeEventListener("message", onReady);
+    worker.removeEventListener("error", failed);
+    // Give responsive workers a brief graceful cleanup; never block cancellation
+    // on a malformed document or a worker that no longer answers Terminate.
+    let cleanupTimer;
+    if (task) {
+      await Promise.race([
+        task.destroy().catch(() => {}),
+        new Promise((resolve) => { cleanupTimer = setTimeout(resolve, 250); }),
+      ]);
+    }
+    clearTimeout(cleanupTimer);
+    pdfWorker?.destroy();
+    worker.terminate();
   }
 }
